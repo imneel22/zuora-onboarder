@@ -114,6 +114,7 @@ export type Database = {
           id: string
           pob_name: string
           updated_at: string
+          version: number | null
         }
         Insert: {
           active?: boolean
@@ -124,6 +125,7 @@ export type Database = {
           id?: string
           pob_name: string
           updated_at?: string
+          version?: number | null
         }
         Update: {
           active?: boolean
@@ -134,6 +136,7 @@ export type Database = {
           id?: string
           pob_name?: string
           updated_at?: string
+          version?: number | null
         }
         Relationships: [
           {
@@ -173,13 +176,17 @@ export type Database = {
         Row: {
           charge_name: string
           confidence: number | null
+          conflict_flags: string[] | null
           created_at: string
           customer_id: string
+          evidence_refs: Json | null
+          explanation_vector: Json | null
           id: string
           inferred_pob: string | null
           inferred_product_category: string | null
           last_reviewed_at: string | null
           last_reviewed_by: string | null
+          needs_review: boolean | null
           product_name: string
           prpc_id: string
           rate_plan_name: string
@@ -191,13 +198,17 @@ export type Database = {
         Insert: {
           charge_name: string
           confidence?: number | null
+          conflict_flags?: string[] | null
           created_at?: string
           customer_id: string
+          evidence_refs?: Json | null
+          explanation_vector?: Json | null
           id?: string
           inferred_pob?: string | null
           inferred_product_category?: string | null
           last_reviewed_at?: string | null
           last_reviewed_by?: string | null
+          needs_review?: boolean | null
           product_name: string
           prpc_id: string
           rate_plan_name: string
@@ -209,13 +220,17 @@ export type Database = {
         Update: {
           charge_name?: string
           confidence?: number | null
+          conflict_flags?: string[] | null
           created_at?: string
           customer_id?: string
+          evidence_refs?: Json | null
+          explanation_vector?: Json | null
           id?: string
           inferred_pob?: string | null
           inferred_product_category?: string | null
           last_reviewed_at?: string | null
           last_reviewed_by?: string | null
+          needs_review?: boolean | null
           product_name?: string
           prpc_id?: string
           rate_plan_name?: string
@@ -237,6 +252,53 @@ export type Database = {
             columns: ["last_reviewed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reconciliation_runs: {
+        Row: {
+          created_at: string
+          customer_id: string
+          delta_summary: Json | null
+          finished_at: string | null
+          id: string
+          mismatch_counts: Json | null
+          sample_links: Json | null
+          scope: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          delta_summary?: Json | null
+          finished_at?: string | null
+          id?: string
+          mismatch_counts?: Json | null
+          sample_links?: Json | null
+          scope: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          delta_summary?: Json | null
+          finished_at?: string | null
+          id?: string
+          mismatch_counts?: Json | null
+          sample_links?: Json | null
+          scope?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliation_runs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -298,16 +360,22 @@ export type Database = {
       subscriptions: {
         Row: {
           audited: boolean
+          audited_at: string | null
+          audited_by: string | null
           billing_period: string
+          confidence: number | null
+          conflict_flags: string[] | null
           created_at: string
           currency: string
           customer_id: string
+          derivation_trace: Json | null
           end_date: string | null
           evergreen: boolean
           has_cancellation: boolean
           has_discounts: boolean
           has_ramps: boolean
           id: string
+          sot_snapshot_hash: string | null
           start_date: string
           status: string
           subscription_id: string
@@ -316,16 +384,22 @@ export type Database = {
         }
         Insert: {
           audited?: boolean
+          audited_at?: string | null
+          audited_by?: string | null
           billing_period: string
+          confidence?: number | null
+          conflict_flags?: string[] | null
           created_at?: string
           currency?: string
           customer_id: string
+          derivation_trace?: Json | null
           end_date?: string | null
           evergreen?: boolean
           has_cancellation?: boolean
           has_discounts?: boolean
           has_ramps?: boolean
           id?: string
+          sot_snapshot_hash?: string | null
           start_date: string
           status?: string
           subscription_id: string
@@ -334,16 +408,22 @@ export type Database = {
         }
         Update: {
           audited?: boolean
+          audited_at?: string | null
+          audited_by?: string | null
           billing_period?: string
+          confidence?: number | null
+          conflict_flags?: string[] | null
           created_at?: string
           currency?: string
           customer_id?: string
+          derivation_trace?: Json | null
           end_date?: string | null
           evergreen?: boolean
           has_cancellation?: boolean
           has_discounts?: boolean
           has_ramps?: boolean
           id?: string
+          sot_snapshot_hash?: string | null
           start_date?: string
           status?: string
           subscription_id?: string

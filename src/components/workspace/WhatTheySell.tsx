@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -12,15 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, CheckCircle, Edit, Info } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Search, CheckCircle, AlertTriangle, Filter } from "lucide-react";
 import { toast } from "sonner";
+import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
 
 interface PRPCInference {
   id: string;
@@ -34,6 +29,12 @@ interface PRPCInference {
   confidence: number | null;
   status: string;
   source_agent: string | null;
+  evidence_refs: any;
+  explanation_vector: any;
+  conflict_flags: string[];
+  needs_review: boolean;
+  last_reviewed_by: string | null;
+  last_reviewed_at: string | null;
 }
 
 export const WhatTheySell = ({ customerId }: { customerId: string }) => {
@@ -41,10 +42,25 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedInference, setSelectedInference] = useState<PRPCInference | null>(null);
+  const [filterBy, setFilterBy] = useState<string>("all");
+  const [userRole, setUserRole] = useState<string>("standard");
 
   useEffect(() => {
+    fetchUserRole();
     fetchInferences();
   }, [customerId]);
+
+  const fetchUserRole = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+      if (data) setUserRole(data.role);
+    }
+  };
 
   const fetchInferences = async () => {
     setLoading(true);
@@ -63,13 +79,24 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
     setLoading(false);
   };
 
-  const filteredInferences = inferences.filter((inf) =>
+  let filteredInferences = inferences.filter((inf) =>
     inf.product_name.toLowerCase().includes(search.toLowerCase()) ||
     inf.rate_plan_name.toLowerCase().includes(search.toLowerCase()) ||
     inf.charge_name.toLowerCase().includes(search.toLowerCase()) ||
     inf.inferred_product_category?.toLowerCase().includes(search.toLowerCase()) ||
     inf.inferred_pob?.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Apply additional filters
+  if (filterBy === "low_confidence") {
+    filteredInferences = filteredInferences.filter(inf => (inf.confidence || 0) < 0.5);
+  } else if (filterBy === "conflicts") {
+    filteredInferences = filteredInferences.filter(inf => inf.conflict_flags?.length > 0);
+  } else if (filterBy === "needs_review") {
+    filteredInferences = filteredInferences.filter(inf => inf.needs_review);
+  } else if (filterBy === "not_approved") {
+    filteredInferences = filteredInferences.filter(inf => inf.status !== "approved");
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -111,20 +138,31 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
         <p className="text-sm text-muted-foreground">
           PRPC-level product categorization and POB mapping with AI rationale
         </p>
-        <Button size="sm">
-          <CheckCircle className="mr-2 h-4 w-4" />
-          Approve Selected
-        </Button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search products, rate plans, categories..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search products, rate plans, categories..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={filterBy} onValueChange={setFilterBy}>
+          <SelectTrigger className="w-[200px]">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Filter by..." />
+          </SelectTrigger>
+          <SelectContent className="bg-background z-50">
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="low_confidence">Low Confidence</SelectItem>
+            <SelectItem value="conflicts">Has Conflicts</SelectItem>
+            <SelectItem value="needs_review">Needs Review</SelectItem>
+            <SelectItem value="not_approved">Not Approved</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <Card>
@@ -138,12 +176,17 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
               <TableHead>POB</TableHead>
               <TableHead>Confidence</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Conflicts</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredInferences.map((inference) => (
-              <TableRow key={inference.id}>
+              <TableRow 
+                key={inference.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => setSelectedInference(inference)}
+              >
                 <TableCell className="font-medium">{inference.product_name}</TableCell>
                 <TableCell>{inference.rate_plan_name}</TableCell>
                 <TableCell>{inference.charge_name}</TableCell>
@@ -155,19 +198,27 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                     {inference.status.replace("_", " ")}
                   </Badge>
                 </TableCell>
+                <TableCell>
+                  {inference.conflict_flags?.length > 0 ? (
+                    <Badge variant="destructive" className="gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      {inference.conflict_flags.length}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground text-xs">None</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedInference(inference)}
-                    >
-                      <Info className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedInference(inference);
+                    }}
+                  >
+                    View
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -181,59 +232,13 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
         </div>
       )}
 
-      <Dialog open={!!selectedInference} onOpenChange={() => setSelectedInference(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Inference Details</DialogTitle>
-            <DialogDescription>
-              AI rationale and classification details
-            </DialogDescription>
-          </DialogHeader>
-          {selectedInference && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium">Product</p>
-                  <p className="text-sm text-muted-foreground">{selectedInference.product_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">PRPC ID</p>
-                  <p className="text-sm text-muted-foreground">{selectedInference.prpc_id}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Category</p>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedInference.inferred_product_category || "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">POB</p>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedInference.inferred_pob || "—"}
-                  </p>
-                </div>
-                {selectedInference.source_agent && (
-                  <div>
-                    <p className="text-sm font-medium">Source Agent</p>
-                    <p className="text-sm text-muted-foreground">{selectedInference.source_agent}</p>
-                  </div>
-                )}
-              </div>
-              
-              {selectedInference.rationale && (
-                <div>
-                  <p className="mb-2 text-sm font-medium">AI Rationale</p>
-                  <div className="rounded-lg bg-muted p-4">
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {selectedInference.rationale}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <PRPCEvidenceDrawer
+        inference={selectedInference}
+        open={!!selectedInference}
+        onClose={() => setSelectedInference(null)}
+        onUpdate={fetchInferences}
+        userRole={userRole}
+      />
     </div>
   );
 };
