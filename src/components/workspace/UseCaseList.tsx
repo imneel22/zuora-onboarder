@@ -123,7 +123,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
       if (sub) {
         items.push({
           id: `uc-${useCaseCounter}`,
-          use_case_id: `G${useCaseCounter}`,
+          use_case_id: `${useCaseCounter}`,
           product_type: category,
           triggering: Math.random() > 0.5 ? "Upon Booking" : "Upon Event",
           timing: Math.random() > 0.5 ? "Ratable" : "Immediate",
@@ -157,7 +157,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
       if (sub) {
         items.push({
           id: `uc-${useCaseCounter}`,
-          use_case_id: `G${useCaseCounter}`,
+          use_case_id: `${useCaseCounter}`,
           product_type: type,
           triggering: "Upon Booking",
           timing: "Ratable",
@@ -209,7 +209,6 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
                 <TableRow>
                   <TableHead className="w-[90px]">Use Case ID</TableHead>
                   <TableHead className="w-[150px]">Product Type</TableHead>
-                  <TableHead className="w-[100px]">Category</TableHead>
                   <TableHead className="w-[80px]">Termed</TableHead>
                   <TableHead className="w-[90px]">Evergreen</TableHead>
                   <TableHead className="w-[80px]">Ramps</TableHead>
@@ -223,7 +222,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
               <TableBody>
                 {useCaseItems.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       No use cases found. Add subscriptions and product categories to generate use cases.
                     </TableCell>
                   </TableRow>
@@ -234,7 +233,6 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
                         {item.use_case_id}
                       </TableCell>
                       <TableCell className="text-sm">{item.product_type}</TableCell>
-                      <TableCell className="text-sm">{item.category}</TableCell>
                       <TableCell>
                         {item.termed ? (
                           <Badge variant="default" className="text-xs">Yes</Badge>
