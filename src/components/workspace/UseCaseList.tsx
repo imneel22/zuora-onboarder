@@ -63,14 +63,62 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
       return [];
     }
 
-    // Mock in_use_case_list - in production this would come from a junction table
-    const withUseCaseFlag = (data || []).map(sub => ({
+    // Compute minimal set: select subscriptions that maximize coverage
+    const subsData = data || [];
+    const minimalSet = computeMinimalSet(subsData);
+    
+    const withUseCaseFlag = subsData.map(sub => ({
       ...sub,
-      in_use_case_list: false // Default false, user will add them
+      in_use_case_list: minimalSet.has(sub.id)
     }));
     
     setSubscriptions(withUseCaseFlag);
     return withUseCaseFlag;
+  };
+
+  const computeMinimalSet = (subs: any[]): Set<string> => {
+    // Attributes to cover
+    const attributesToCover = ['termed', 'evergreen', 'has_cancellation', 'has_ramps', 'has_discounts'];
+    const covered = new Set<string>();
+    const selected = new Set<string>();
+
+    // Greedy algorithm: pick subscriptions that cover the most uncovered attributes
+    while (covered.size < attributesToCover.length && subs.length > 0) {
+      let bestSub: any = null;
+      let bestCoverage = 0;
+
+      for (const sub of subs) {
+        if (selected.has(sub.id)) continue;
+        
+        let coverageCount = 0;
+        for (const attr of attributesToCover) {
+          if (!covered.has(attr) && sub[attr] === true) {
+            coverageCount++;
+          }
+        }
+
+        if (coverageCount > bestCoverage) {
+          bestCoverage = coverageCount;
+          bestSub = sub;
+        }
+      }
+
+      if (!bestSub || bestCoverage === 0) break;
+
+      selected.add(bestSub.id);
+      for (const attr of attributesToCover) {
+        if (bestSub[attr] === true) {
+          covered.add(attr);
+        }
+      }
+    }
+
+    // Ensure we have at least one subscription for diversity
+    if (selected.size === 0 && subs.length > 0) {
+      selected.add(subs[0].id);
+    }
+
+    return selected;
   };
 
   const fetchCategoryCoverage = async (subs: Subscription[]) => {
