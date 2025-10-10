@@ -4,13 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Eye } from "lucide-react";
+import { Search, Plus, Eye, User } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+
 interface Customer {
   id: string;
   name: string;
@@ -21,11 +22,21 @@ interface Customer {
   go_live_target_date: string | null;
   assigned_user_ids: string[];
 }
+
+interface UserWithRole {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
+}
 const Customers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [selectedUserRole, setSelectedUserRole] = useState<string>("admin");
   const [formData, setFormData] = useState({
     name: "",
     zuora_account_id: "",
@@ -36,8 +47,40 @@ const Customers = () => {
   });
   const navigate = useNavigate();
   useEffect(() => {
+    fetchUsers();
     fetchCustomers();
   }, []);
+
+  const fetchUsers = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(`
+        id,
+        full_name,
+        email,
+        user_roles (role)
+      `);
+
+    if (error) {
+      console.error("Failed to fetch users:", error);
+      return;
+    }
+
+    const usersWithRoles = (data || []).map((user: any) => ({
+      id: user.id,
+      full_name: user.full_name || user.email,
+      email: user.email,
+      role: user.user_roles?.[0]?.role || "standard"
+    }));
+
+    setUsers(usersWithRoles);
+    
+    // Set first user as default
+    if (usersWithRoles.length > 0) {
+      setSelectedUserId(usersWithRoles[0].id);
+      setSelectedUserRole(usersWithRoles[0].role);
+    }
+  };
   const fetchCustomers = async () => {
     setLoading(true);
     const {
@@ -52,7 +95,27 @@ const Customers = () => {
     }
     setLoading(false);
   };
-  const filteredCustomers = customers.filter(customer => customer.name.toLowerCase().includes(search.toLowerCase()) || customer.zuora_account_id.toLowerCase().includes(search.toLowerCase()) || customer.industry?.toLowerCase().includes(search.toLowerCase()));
+  // Filter by role and assignment
+  const roleFilteredCustomers = selectedUserRole === "admin"
+    ? customers
+    : customers.filter(customer => 
+        customer.assigned_user_ids && customer.assigned_user_ids.includes(selectedUserId)
+      );
+
+  // Then filter by search
+  const filteredCustomers = roleFilteredCustomers.filter(customer => 
+    customer.name.toLowerCase().includes(search.toLowerCase()) || 
+    customer.zuora_account_id.toLowerCase().includes(search.toLowerCase()) || 
+    customer.industry?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleUserChange = (userId: string) => {
+    setSelectedUserId(userId);
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      setSelectedUserRole(user.role);
+    }
+  };
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
@@ -126,13 +189,34 @@ const Customers = () => {
             Manage revenue implementation projects
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Customer
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <Select value={selectedUserId} onValueChange={handleUserChange}>
+              <SelectTrigger className="w-[240px]">
+                <SelectValue placeholder="Select user view" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    <div className="flex items-center gap-2">
+                      <span>{user.full_name}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {user.role}
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                New Customer
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Add New Customer</DialogTitle>
@@ -210,6 +294,7 @@ const Customers = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="relative">
