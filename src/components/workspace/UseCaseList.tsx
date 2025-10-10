@@ -13,6 +13,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 interface Subscription {
   id: string;
@@ -36,11 +45,21 @@ interface UseCaseItem {
   count: number;
   status: 'pending' | 'uploaded';
   subscription_id: string;
+  termed: boolean;
+  evergreen: boolean;
+  has_ramps: boolean;
+  has_discounts: boolean;
+  billing_period: string;
+  rate_plan: string;
+  charge: string;
+  category: string;
 }
 
 export const UseCaseList = ({ customerId }: { customerId: string }) => {
   const [useCaseItems, setUseCaseItems] = useState<UseCaseItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<UseCaseItem | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -50,6 +69,11 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
     setLoading(true);
     await fetchUseCaseItems();
     setLoading(false);
+  };
+
+  const handleCountClick = (item: UseCaseItem) => {
+    setSelectedItem(item);
+    setDrawerOpen(true);
   };
 
   const fetchUseCaseItems = async () => {
@@ -105,7 +129,15 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
           timing: Math.random() > 0.5 ? "Ratable" : "Immediate",
           count: Math.floor(Math.random() * 60) + 5,
           status: Math.random() > 0.5 ? "uploaded" : "pending",
-          subscription_id: sub.subscription_id
+          subscription_id: sub.subscription_id,
+          termed: sub.termed,
+          evergreen: sub.evergreen,
+          has_ramps: sub.has_ramps,
+          has_discounts: sub.has_discounts,
+          billing_period: sub.billing_period,
+          rate_plan: `RP-${useCaseCounter}`,
+          charge: `Charge-${useCaseCounter}`,
+          category: category
         });
         useCaseCounter++;
       }
@@ -131,7 +163,15 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
           timing: "Ratable",
           count: Math.floor(Math.random() * 50) + 10,
           status: Math.random() > 0.5 ? "uploaded" : "pending",
-          subscription_id: sub.subscription_id
+          subscription_id: sub.subscription_id,
+          termed: sub.termed,
+          evergreen: sub.evergreen,
+          has_ramps: sub.has_ramps,
+          has_discounts: sub.has_discounts,
+          billing_period: sub.billing_period,
+          rate_plan: `RP-${useCaseCounter}`,
+          charge: `Charge-${useCaseCounter}`,
+          category: type
         });
         useCaseCounter++;
       }
@@ -157,91 +197,175 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Use Case List</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[120px]">Use Case ID</TableHead>
-                <TableHead className="w-[200px]">Product Type</TableHead>
-                <TableHead>Triggering & Timing</TableHead>
-                <TableHead className="w-[100px]">Count</TableHead>
-                <TableHead className="w-[150px]">Waterfall Status</TableHead>
-                <TableHead className="w-[120px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {useCaseItems.length === 0 ? (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Use Case List</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No use cases found. Add subscriptions and product categories to generate use cases.
-                  </TableCell>
+                  <TableHead className="w-[90px]">Use Case ID</TableHead>
+                  <TableHead className="w-[150px]">Product Type</TableHead>
+                  <TableHead className="w-[100px]">Category</TableHead>
+                  <TableHead className="w-[80px]">Termed</TableHead>
+                  <TableHead className="w-[90px]">Evergreen</TableHead>
+                  <TableHead className="w-[80px]">Ramps</TableHead>
+                  <TableHead className="w-[90px]">Discount</TableHead>
+                  <TableHead className="w-[100px]">Billing Type</TableHead>
+                  <TableHead className="w-[80px] cursor-pointer hover:bg-muted/50">Count</TableHead>
+                  <TableHead className="w-[130px]">Status</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
-              ) : (
-                useCaseItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium text-primary">
-                      {item.use_case_id}
-                    </TableCell>
-                    <TableCell>{item.product_type}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <Badge variant="secondary" className="w-fit text-xs">
-                          {item.triggering}
-                        </Badge>
-                        <Badge variant="outline" className="w-fit text-xs">
-                          {item.timing}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-semibold text-primary">
-                        {item.count}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {item.status === "uploaded" ? (
-                        <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
-                          <span className="mr-1">✓</span> Uploaded
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                          <span className="mr-1">⦿</span> Pending
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {item.status === "uploaded" ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleView(item.use_case_id)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleUpload(item.use_case_id)}
-                        >
-                          <Upload className="h-4 w-4 mr-1" />
-                          Upload
-                        </Button>
-                      )}
+              </TableHeader>
+              <TableBody>
+                {useCaseItems.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                      No use cases found. Add subscriptions and product categories to generate use cases.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+                ) : (
+                  useCaseItems.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium text-primary">
+                        {item.use_case_id}
+                      </TableCell>
+                      <TableCell className="text-sm">{item.product_type}</TableCell>
+                      <TableCell className="text-sm">{item.category}</TableCell>
+                      <TableCell>
+                        {item.termed ? (
+                          <Badge variant="default" className="text-xs">Yes</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">No</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {item.evergreen ? (
+                          <Badge variant="default" className="text-xs">Yes</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">No</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {item.has_ramps ? (
+                          <Badge variant="default" className="text-xs">Yes</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">No</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {item.has_discounts ? (
+                          <Badge variant="default" className="text-xs">Yes</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">No</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">{item.billing_period}</TableCell>
+                      <TableCell 
+                        className="font-semibold text-primary cursor-pointer hover:underline"
+                        onClick={() => handleCountClick(item)}
+                      >
+                        {item.count}
+                      </TableCell>
+                      <TableCell>
+                        {item.status === "uploaded" ? (
+                          <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
+                            <span className="mr-1">✓</span> Uploaded
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                            <span className="mr-1">⦿</span> Pending
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {item.status === "uploaded" ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleView(item.use_case_id)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleUpload(item.use_case_id)}
+                          >
+                            <Upload className="h-4 w-4 mr-1" />
+                            Upload
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Use Case Details - {selectedItem?.use_case_id}</DrawerTitle>
+            <DrawerDescription>
+              Complete information for this use case
+            </DrawerDescription>
+          </DrawerHeader>
+          {selectedItem && (
+            <div className="px-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">Subscription ID</div>
+                  <div className="text-sm">{selectedItem.subscription_id}</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">Rate Plan</div>
+                  <div className="text-sm">{selectedItem.rate_plan}</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">Charge</div>
+                  <div className="text-sm">{selectedItem.charge}</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">Triggering</div>
+                  <div className="text-sm">{selectedItem.triggering}</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">Timing</div>
+                  <div className="text-sm">{selectedItem.timing}</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">Count</div>
+                  <div className="text-sm font-semibold text-primary">{selectedItem.count}</div>
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-2">Attributes</div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedItem.termed && <Badge>Termed</Badge>}
+                  {selectedItem.evergreen && <Badge>Evergreen</Badge>}
+                  {selectedItem.has_ramps && <Badge>Has Ramps</Badge>}
+                  {selectedItem.has_discounts && <Badge>Has Discounts</Badge>}
+                  <Badge variant="secondary">{selectedItem.billing_period}</Badge>
+                </div>
+              </div>
+            </div>
+          )}
+          <DrawerFooter>
+            <DrawerClose asChild>
+              <Button variant="outline">Close</Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    </>
   );
 };
