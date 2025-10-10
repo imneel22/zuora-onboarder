@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Eye } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 interface Customer {
   id: string;
@@ -22,6 +25,15 @@ const Customers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    zuora_account_id: "",
+    industry: "",
+    status: "active",
+    phase: "discovery",
+    go_live_target_date: ""
+  });
   const navigate = useNavigate();
   useEffect(() => {
     fetchCustomers();
@@ -66,6 +78,41 @@ const Customers = () => {
     };
     return phaseMap[phase] || 0;
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.name || !formData.zuora_account_id) {
+      toast.error("Please fill in required fields");
+      return;
+    }
+
+    const { error } = await supabase.from("customers").insert([{
+      name: formData.name,
+      zuora_account_id: formData.zuora_account_id,
+      industry: formData.industry || null,
+      status: formData.status,
+      phase: formData.phase,
+      go_live_target_date: formData.go_live_target_date || null
+    }]);
+
+    if (error) {
+      toast.error("Failed to create customer");
+      console.error(error);
+    } else {
+      toast.success("Customer created successfully");
+      setDialogOpen(false);
+      setFormData({
+        name: "",
+        zuora_account_id: "",
+        industry: "",
+        status: "active",
+        phase: "discovery",
+        go_live_target_date: ""
+      });
+      fetchCustomers();
+    }
+  };
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center">
         <div className="text-muted-foreground">Loading customers...</div>
@@ -79,10 +126,90 @@ const Customers = () => {
             Manage revenue implementation projects
           </p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          New Customer
-        </Button>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              New Customer
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add New Customer</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Customer Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter customer name"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="zuora_account_id">Zuora Tenant ID *</Label>
+                <Input
+                  id="zuora_account_id"
+                  value={formData.zuora_account_id}
+                  onChange={(e) => setFormData({ ...formData, zuora_account_id: e.target.value })}
+                  placeholder="e.g., 1234567"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="industry">Industry</Label>
+                <Input
+                  id="industry"
+                  value={formData.industry}
+                  onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                  placeholder="e.g., Technology"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="onboarding">Onboarding</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phase">Phase</Label>
+                <Select value={formData.phase} onValueChange={(value) => setFormData({ ...formData, phase: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="discovery">Discovery</SelectItem>
+                    <SelectItem value="design">Design</SelectItem>
+                    <SelectItem value="build">Build</SelectItem>
+                    <SelectItem value="test">Test</SelectItem>
+                    <SelectItem value="deploy">Deploy</SelectItem>
+                    <SelectItem value="complete">Complete</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="go_live_target_date">Target Go-Live Date</Label>
+                <Input
+                  id="go_live_target_date"
+                  type="date"
+                  value={formData.go_live_target_date}
+                  onChange={(e) => setFormData({ ...formData, go_live_target_date: e.target.value })}
+                />
+              </div>
+              <Button type="submit" className="w-full">Create Customer</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="relative">
