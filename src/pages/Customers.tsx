@@ -5,17 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Eye } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-
 interface Customer {
   id: string;
   name: string;
@@ -26,24 +18,20 @@ interface Customer {
   go_live_target_date: string | null;
   assigned_user_ids: string[];
 }
-
 const Customers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-
   useEffect(() => {
     fetchCustomers();
   }, []);
-
   const fetchCustomers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("customers")
-      .select("*")
-      .order("name");
-
+    const {
+      data,
+      error
+    } = await supabase.from("customers").select("*").order("name");
     if (error) {
       toast.error("Failed to load customers");
       console.error(error);
@@ -52,13 +40,7 @@ const Customers = () => {
     }
     setLoading(false);
   };
-
-  const filteredCustomers = customers.filter((customer) =>
-    customer.name.toLowerCase().includes(search.toLowerCase()) ||
-    customer.zuora_account_id.toLowerCase().includes(search.toLowerCase()) ||
-    customer.industry?.toLowerCase().includes(search.toLowerCase())
-  );
-
+  const filteredCustomers = customers.filter(customer => customer.name.toLowerCase().includes(search.toLowerCase()) || customer.zuora_account_id.toLowerCase().includes(search.toLowerCase()) || customer.industry?.toLowerCase().includes(search.toLowerCase()));
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
@@ -73,7 +55,6 @@ const Customers = () => {
         return "bg-muted text-muted-foreground";
     }
   };
-
   const getPhaseProgress = (phase: string) => {
     const phaseMap: Record<string, number> = {
       discovery: 17,
@@ -81,21 +62,16 @@ const Customers = () => {
       build: 50,
       test: 67,
       deploy: 83,
-      complete: 100,
+      complete: 100
     };
     return phaseMap[phase] || 0;
   };
-
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
+    return <div className="flex min-h-screen items-center justify-center">
         <div className="text-muted-foreground">Loading customers...</div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
@@ -111,12 +87,7 @@ const Customers = () => {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search customers..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
+        <Input placeholder="Search customers..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
       </div>
 
       <div className="rounded-md border">
@@ -124,7 +95,7 @@ const Customers = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Customer Name</TableHead>
-              <TableHead>Zuora Account ID</TableHead>
+              <TableHead>Zuora Tenant ID</TableHead>
               <TableHead>Industry</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Target Date</TableHead>
@@ -132,12 +103,7 @@ const Customers = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredCustomers.map((customer) => (
-              <TableRow
-                key={customer.id}
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => navigate(`/customer/${customer.id}`)}
-              >
+            {filteredCustomers.map(customer => <TableRow key={customer.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/customer/${customer.id}`)}>
                 <TableCell>
                   <div className="space-y-1">
                     <div className="font-medium">{customer.name}</div>
@@ -155,38 +121,27 @@ const Customers = () => {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {customer.go_live_target_date
-                    ? new Date(customer.go_live_target_date).toLocaleDateString()
-                    : "-"}
+                  {customer.go_live_target_date ? new Date(customer.go_live_target_date).toLocaleDateString() : "-"}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/customer/${customer.id}`);
-                    }}
-                  >
+                  <Button variant="ghost" size="sm" onClick={e => {
+                e.stopPropagation();
+                navigate(`/customer/${customer.id}`);
+              }}>
                     <Eye className="h-4 w-4" />
                   </Button>
                 </TableCell>
-              </TableRow>
-            ))}
+              </TableRow>)}
           </TableBody>
         </Table>
       </div>
 
-      {filteredCustomers.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
+      {filteredCustomers.length === 0 && <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-lg text-muted-foreground">No customers found</p>
           <p className="text-sm text-muted-foreground">
             Try adjusting your search or add a new customer
           </p>
-        </div>
-      )}
-    </div>
-  );
+        </div>}
+    </div>;
 };
-
 export default Customers;
