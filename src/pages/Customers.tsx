@@ -202,22 +202,12 @@ const Customers = () => {
             <User className="h-4 w-4 text-muted-foreground" />
             <Select value={selectedUserId} onValueChange={handleUserChange}>
               <SelectTrigger className="w-[240px]">
-                <SelectValue placeholder="Select user view">
-                  {selectedUserId && users.find(u => u.id === selectedUserId) && (
-                    <span>
-                      {users.find(u => u.id === selectedUserId)?.full_name}
-                      {" "}
-                      <Badge variant="outline" className="text-xs ml-2">
-                        {users.find(u => u.id === selectedUserId)?.role}
-                      </Badge>
-                    </span>
-                  )}
-                </SelectValue>
+                <SelectValue placeholder="Select user view" />
               </SelectTrigger>
               <SelectContent className="bg-background z-50">
                 {users.map((user) => (
                   <SelectItem key={user.id} value={user.id}>
-                    {user.full_name} ({user.role})
+                    {user.full_name} - {user.role}
                   </SelectItem>
                 ))}
               </SelectContent>
