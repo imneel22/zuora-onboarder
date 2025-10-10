@@ -113,7 +113,7 @@ const Customers = () => {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>A-{customer.zuora_account_id.padStart(7, '0')}</TableCell>
+                <TableCell>{customer.zuora_account_id.padStart(7, '0')}</TableCell>
                 <TableCell>{customer.industry || "-"}</TableCell>
                 <TableCell>
                   <Badge className={getStatusColor(customer.status)} variant="outline">
