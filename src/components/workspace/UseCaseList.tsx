@@ -167,7 +167,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[120px]">Use Case ID</TableHead>
-                <TableHead>Product Type</TableHead>
+                <TableHead className="w-[200px]">Product Type</TableHead>
                 <TableHead>Triggering & Timing</TableHead>
                 <TableHead className="w-[100px]">Count</TableHead>
                 <TableHead className="w-[150px]">Waterfall Status</TableHead>
