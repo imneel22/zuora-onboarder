@@ -3,9 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, ArrowRight } from "lucide-react";
+import { Search, Plus, Eye } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
 
 interface Customer {
@@ -98,51 +105,54 @@ const Customers = () => {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredCustomers.map((customer) => (
-          <Card
-            key={customer.id}
-            className="cursor-pointer transition-all hover:shadow-md"
-            onClick={() => navigate(`/customer/${customer.id}`)}
-          >
-            <CardContent className="p-6">
-              <div className="mb-4 flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold">{customer.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {customer.zuora_account_id}
-                  </p>
-                </div>
-                <ArrowRight className="h-5 w-5 text-muted-foreground" />
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Status</span>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Customer Name</TableHead>
+              <TableHead>Zuora Account ID</TableHead>
+              <TableHead>Industry</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Target Date</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredCustomers.map((customer) => (
+              <TableRow
+                key={customer.id}
+                className="cursor-pointer"
+                onClick={() => navigate(`/customer/${customer.id}`)}
+              >
+                <TableCell className="font-medium">{customer.name}</TableCell>
+                <TableCell>{customer.zuora_account_id}</TableCell>
+                <TableCell>{customer.industry || "-"}</TableCell>
+                <TableCell>
                   <Badge className={getStatusColor(customer.status)} variant="outline">
                     {customer.status}
                   </Badge>
-                </div>
-
-                {customer.industry && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Industry</span>
-                    <span className="text-sm font-medium">{customer.industry}</span>
-                  </div>
-                )}
-
-                {customer.go_live_target_date && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Target Date</span>
-                    <span className="text-sm font-medium">
-                      {new Date(customer.go_live_target_date).toLocaleDateString()}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                </TableCell>
+                <TableCell>
+                  {customer.go_live_target_date
+                    ? new Date(customer.go_live_target_date).toLocaleDateString()
+                    : "-"}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/customer/${customer.id}`);
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
 
       {filteredCustomers.length === 0 && (
