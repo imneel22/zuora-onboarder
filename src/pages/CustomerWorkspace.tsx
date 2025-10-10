@@ -10,8 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { WhatTheySell } from "@/components/workspace/WhatTheySell";
 import { HowTheySell } from "@/components/workspace/HowTheySell";
-import { CoverageSet } from "@/components/workspace/CoverageSet";
-import { AuditTrail } from "@/components/workspace/AuditTrail";
+import { UseCaseList } from "@/components/workspace/UseCaseList";
 
 interface Customer {
   id: string;
@@ -120,11 +119,10 @@ const CustomerWorkspace = () => {
       </div>
 
       <Tabs defaultValue="what-they-sell" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="what-they-sell">What They Sell</TabsTrigger>
           <TabsTrigger value="how-they-sell">How They Sell</TabsTrigger>
-          <TabsTrigger value="coverage-set">Coverage Set</TabsTrigger>
-          <TabsTrigger value="audit-trail">Audit Trail</TabsTrigger>
+          <TabsTrigger value="use-case-list">Use Case List</TabsTrigger>
         </TabsList>
 
         <TabsContent value="what-they-sell" className="space-y-4">
@@ -135,12 +133,8 @@ const CustomerWorkspace = () => {
           <HowTheySell customerId={customer.id} />
         </TabsContent>
 
-        <TabsContent value="coverage-set" className="space-y-4">
-          <CoverageSet customerId={customer.id} />
-        </TabsContent>
-
-        <TabsContent value="audit-trail" className="space-y-4">
-          <AuditTrail customerId={customer.id} />
+        <TabsContent value="use-case-list" className="space-y-4">
+          <UseCaseList customerId={customer.id} />
         </TabsContent>
       </Tabs>
     </div>
