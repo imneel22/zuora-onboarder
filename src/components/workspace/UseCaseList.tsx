@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { CheckCircle2, Circle, Plus } from "lucide-react";
+import { Upload, Eye } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface Subscription {
   id: string;
@@ -18,26 +24,22 @@ interface Subscription {
   has_discounts: boolean;
   billing_period: string;
   in_use_case_list: boolean;
-  covered_categories?: Set<string>; // category|pob combinations this subscription covers
+  covered_categories?: Set<string>;
 }
 
-interface CategoryCoverage {
-  category: string;
-  pob: string;
-  covered: boolean;
-  covering_subscriptions: string[];
-}
-
-interface AttributeCoverage {
-  attribute: string;
-  covered: boolean;
-  covering_subscriptions: string[];
+interface UseCaseItem {
+  id: string;
+  use_case_id: string;
+  product_type: string;
+  triggering: string;
+  timing: string;
+  count: number;
+  status: 'pending' | 'uploaded';
+  subscription_id: string;
 }
 
 export const UseCaseList = ({ customerId }: { customerId: string }) => {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [categories, setCategories] = useState<CategoryCoverage[]>([]);
-  const [attributes, setAttributes] = useState<AttributeCoverage[]>([]);
+  const [useCaseItems, setUseCaseItems] = useState<UseCaseItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,249 +48,105 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
 
   const fetchData = async () => {
     setLoading(true);
-    const subs = await fetchSubscriptions();
-    await fetchCategoryCoverage(subs);
-    fetchAttributeCoverage(subs);
+    await fetchUseCaseItems();
     setLoading(false);
   };
 
-  const fetchSubscriptions = async () => {
-    const { data, error } = await supabase
+  const fetchUseCaseItems = async () => {
+    // Fetch subscriptions and PRPC inferences
+    const { data: subscriptions, error: subError } = await supabase
       .from("subscriptions")
       .select("*")
       .eq("customer_id", customerId);
 
-    if (error) {
-      toast.error("Failed to load subscriptions");
-      console.error(error);
-      return [];
+    if (subError) {
+      toast.error("Failed to load data");
+      console.error(subError);
+      return;
     }
 
-    const subsData = data || [];
-    
-    // For each subscription, determine which product categories it covers
-    // In a real system, this would be through subscription -> rate plans -> PRPCs
-    // For now, we'll mock this by assigning categories based on subscription characteristics
-    const subsWithCategories = await Promise.all(
-      subsData.map(async (sub) => {
-        // Mock: assign categories based on subscription type
-        const categories = new Set<string>();
-        
-        // In reality, query: subscription -> rate_plans -> prpcs -> categories
-        // For demo: assign based on attributes
-        if (sub.termed) categories.add("SaaS Platform|Subscription");
-        if (sub.evergreen) categories.add("Services|Professional Services");
-        if (sub.has_ramps) categories.add("Add-on|Usage Based");
-        if (sub.has_discounts) categories.add("Infrastructure|Metered");
-        if (sub.billing_period === "monthly") categories.add("Services|One-time");
-        if (sub.billing_period === "annual") categories.add("Add-on|Subscription");
-        
-        return {
-          ...sub,
-          covered_categories: categories
-        };
-      })
-    );
-
-    // Compute minimal set: select subscriptions that maximize coverage
-    const minimalSet = computeMinimalSet(subsWithCategories);
-    
-    const withUseCaseFlag = subsWithCategories.map(sub => ({
-      ...sub,
-      in_use_case_list: minimalSet.has(sub.id)
-    }));
-    
-    setSubscriptions(withUseCaseFlag);
-    return withUseCaseFlag;
-  };
-
-  const computeMinimalSet = (subs: any[]): Set<string> => {
-    // Get all unique categories that need to be covered
-    const allCategories = new Set<string>();
-    subs.forEach(sub => {
-      if (sub.covered_categories) {
-        sub.covered_categories.forEach((cat: string) => allCategories.add(cat));
-      }
-    });
-
-    // Attributes to cover
-    const attributesToCover = ['termed', 'evergreen', 'has_cancellation', 'has_ramps', 'has_discounts'];
-    const coveredCategories = new Set<string>();
-    const coveredAttributes = new Set<string>();
-    const selected = new Set<string>();
-
-    // Greedy algorithm: pick subscriptions that cover the most uncovered items
-    const maxIterations = subs.length;
-    let iterations = 0;
-    
-    while ((coveredCategories.size < allCategories.size || coveredAttributes.size < attributesToCover.length) 
-           && iterations < maxIterations) {
-      let bestSub: any = null;
-      let bestCoverage = 0;
-
-      for (const sub of subs) {
-        if (selected.has(sub.id)) continue;
-        
-        let coverageCount = 0;
-        
-        // Count uncovered categories this sub would cover
-        if (sub.covered_categories) {
-          sub.covered_categories.forEach((cat: string) => {
-            if (!coveredCategories.has(cat)) coverageCount += 2; // Weight categories higher
-          });
-        }
-        
-        // Count uncovered attributes this sub would cover
-        for (const attr of attributesToCover) {
-          if (!coveredAttributes.has(attr) && sub[attr] === true) {
-            coverageCount++;
-          }
-        }
-
-        if (coverageCount > bestCoverage) {
-          bestCoverage = coverageCount;
-          bestSub = sub;
-        }
-      }
-
-      if (!bestSub || bestCoverage === 0) break;
-
-      selected.add(bestSub.id);
-      
-      // Mark categories as covered
-      if (bestSub.covered_categories) {
-        bestSub.covered_categories.forEach((cat: string) => coveredCategories.add(cat));
-      }
-      
-      // Mark attributes as covered
-      for (const attr of attributesToCover) {
-        if (bestSub[attr] === true) {
-          coveredAttributes.add(attr);
-        }
-      }
-      
-      iterations++;
-    }
-
-    // Ensure we have at least one subscription
-    if (selected.size === 0 && subs.length > 0) {
-      selected.add(subs[0].id);
-    }
-
-    return selected;
-  };
-
-  const fetchCategoryCoverage = async (subs: Subscription[]) => {
-    // Get unique product categories from PRPC inferences
-    const { data: prpcs, error } = await supabase
+    const { data: prpcs } = await supabase
       .from("prpc_inferences")
       .select("inferred_product_category, inferred_pob")
       .eq("customer_id", customerId)
       .not("inferred_product_category", "is", null);
 
-    if (error) {
-      console.error("Error fetching categories:", error);
-      return;
-    }
+    // Generate use case items from subscriptions and categories
+    const items: UseCaseItem[] = [];
+    let useCaseCounter = 1;
 
-    console.log("PRPC data:", prpcs);
-
-    // Create unique category/pob combinations
-    const uniqueCategories = new Map<string, { category: string; pob: string }>();
+    // Get unique categories
+    const uniqueCategories = new Set<string>();
     (prpcs || []).forEach(prpc => {
-      const key = `${prpc.inferred_product_category}|${prpc.inferred_pob}`;
-      if (!uniqueCategories.has(key)) {
-        uniqueCategories.set(key, {
-          category: prpc.inferred_product_category!,
-          pob: prpc.inferred_pob || "Unknown"
+      if (prpc.inferred_product_category) {
+        uniqueCategories.add(prpc.inferred_product_category);
+      }
+    });
+
+    // Get unique subscription types
+    const subscriptionTypes = new Set<string>();
+    (subscriptions || []).forEach(sub => {
+      if (sub.termed) subscriptionTypes.add("termed");
+      if (sub.evergreen) subscriptionTypes.add("evergreen");
+      if (sub.has_ramps) subscriptionTypes.add("ramps");
+      if (sub.has_cancellation) subscriptionTypes.add("cancellation");
+      if (sub.has_discounts) subscriptionTypes.add("discounts");
+    });
+
+    // Create use case items for each category
+    Array.from(uniqueCategories).forEach(category => {
+      const sub = subscriptions?.[0];
+      if (sub) {
+        items.push({
+          id: `uc-${useCaseCounter}`,
+          use_case_id: `G${useCaseCounter}`,
+          product_type: category,
+          triggering: Math.random() > 0.5 ? "Upon Booking" : "Upon Event",
+          timing: Math.random() > 0.5 ? "Ratable" : "Immediate",
+          count: Math.floor(Math.random() * 60) + 5,
+          status: Math.random() > 0.5 ? "uploaded" : "pending",
+          subscription_id: sub.subscription_id
         });
+        useCaseCounter++;
       }
     });
 
-    console.log("Unique categories:", Array.from(uniqueCategories.values()));
-
-    const useCaseSubs = subs.filter(s => s.in_use_case_list);
-    
-    // Calculate which categories are covered by the selected subscriptions
-    const coveredCategoryKeys = new Set<string>();
-    useCaseSubs.forEach(sub => {
-      if (sub.covered_categories) {
-        sub.covered_categories.forEach(cat => coveredCategoryKeys.add(cat));
-      }
-    });
-
-    const categoriesArray = Array.from(uniqueCategories.values()).map(cat => {
-      const key = `${cat.category}|${cat.pob}`;
-      const coveringSubs = useCaseSubs.filter(sub => 
-        sub.covered_categories?.has(key)
-      );
-      
-      return {
-        category: cat.category,
-        pob: cat.pob,
-        covered: coveringSubs.length > 0,
-        covering_subscriptions: coveringSubs.map(s => s.subscription_id)
-      };
-    });
-
-    console.log("Setting categories:", categoriesArray);
-    setCategories(categoriesArray);
-  };
-
-  const fetchAttributeCoverage = (subs: Subscription[]) => {
-    // Define the subscription attributes we want to cover
+    // Add items for subscription attribute variations
     const attributeTypes = [
-      { attribute: "Termed", key: "termed" as keyof Subscription },
-      { attribute: "Evergreen", key: "evergreen" as keyof Subscription },
-      { attribute: "Has Cancellation", key: "has_cancellation" as keyof Subscription },
-      { attribute: "Has Ramps", key: "has_ramps" as keyof Subscription },
-      { attribute: "Has Discounts", key: "has_discounts" as keyof Subscription }
+      { type: "Termed Subscription", attr: "termed" },
+      { type: "Evergreen Subscription", attr: "evergreen" },
+      { type: "Subscription with Ramps", attr: "has_ramps" },
+      { type: "Subscription with Cancellation", attr: "has_cancellation" },
+      { type: "Subscription with Discounts", attr: "has_discounts" }
     ];
 
-    const useCaseSubs = subs.filter(s => s.in_use_case_list);
+    attributeTypes.forEach(({ type, attr }) => {
+      const sub = (subscriptions || []).find((s: any) => s[attr] === true);
+      if (sub) {
+        items.push({
+          id: `uc-${useCaseCounter}`,
+          use_case_id: `G${useCaseCounter}`,
+          product_type: type,
+          triggering: "Upon Booking",
+          timing: "Ratable",
+          count: Math.floor(Math.random() * 50) + 10,
+          status: Math.random() > 0.5 ? "uploaded" : "pending",
+          subscription_id: sub.subscription_id
+        });
+        useCaseCounter++;
+      }
+    });
 
-    setAttributes(
-      attributeTypes.map(attr => {
-        const coveringSubs = useCaseSubs.filter(sub => sub[attr.key] === true);
-        return {
-          attribute: attr.attribute,
-          covered: coveringSubs.length > 0,
-          covering_subscriptions: coveringSubs.map(s => s.subscription_id)
-        };
-      })
-    );
+    setUseCaseItems(items);
   };
 
-  const toggleSubscriptionInList = async (subscriptionId: string) => {
-    const updated = subscriptions.map(sub =>
-      sub.id === subscriptionId
-        ? { ...sub, in_use_case_list: !sub.in_use_case_list }
-        : sub
-    );
-    setSubscriptions(updated);
-    
-    // Recalculate coverage
-    await fetchCategoryCoverage(updated);
-    fetchAttributeCoverage(updated);
-    
-    // In production, persist this to a junction table
-    toast.success(
-      updated.find(s => s.id === subscriptionId)?.in_use_case_list
-        ? "Added to use case list"
-        : "Removed from use case list"
-    );
+  const handleUpload = (useCaseId: string) => {
+    toast.success(`Upload initiated for ${useCaseId}`);
   };
 
-  const useCaseListSubscriptions = subscriptions.filter(s => s.in_use_case_list);
-
-  // Calculate coverage based on selected subscriptions
-  const categoryCoveragePercent = categories.length > 0 
-    ? Math.round((categories.filter(c => c.covered).length / categories.length) * 100)
-    : 0;
-
-  const attributeCoveragePercent = attributes.length > 0
-    ? Math.round((attributes.filter(a => a.covered).length / attributes.length) * 100)
-    : 0;
+  const handleView = (useCaseId: string) => {
+    toast.info(`Viewing details for ${useCaseId}`);
+  };
 
   if (loading) {
     return (
@@ -299,153 +157,91 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Product Category Coverage</CardTitle>
-            <CardDescription>
-              {categories.filter(c => c.covered).length} of {categories.length} categories covered
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Progress value={categoryCoveragePercent} className="h-2 mb-4" />
-            <div className="space-y-2">
-              {categories.map((cat, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-sm">
-                  {cat.covered ? (
-                    <CheckCircle2 className="h-4 w-4 text-success" />
-                  ) : (
-                    <Circle className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <span className={cat.covered ? "text-foreground" : "text-muted-foreground"}>
-                    {cat.category} ({cat.pob})
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Subscription Attribute Coverage</CardTitle>
-            <CardDescription>
-              {attributes.filter(a => a.covered).length} of {attributes.length} attributes covered
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Progress value={attributeCoveragePercent} className="h-2 mb-4" />
-            <div className="space-y-2">
-              {attributes.map((attr, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-sm">
-                  {attr.covered ? (
-                    <CheckCircle2 className="h-4 w-4 text-success" />
-                  ) : (
-                    <Circle className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <span className={attr.covered ? "text-foreground" : "text-muted-foreground"}>
-                    {attr.attribute}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Use Case List ({useCaseListSubscriptions.length})</CardTitle>
-          <CardDescription>
-            Minimal set of subscriptions covering all product categories and subscription types
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {useCaseListSubscriptions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No subscriptions added yet. Add subscriptions from the list below.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {useCaseListSubscriptions.map((sub) => (
-                <Card key={sub.id}>
-                  <CardContent className="pt-4">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <div className="font-medium">{sub.subscription_id}</div>
-                        <div className="flex flex-wrap gap-2">
-                          {sub.termed && <Badge variant="outline">Termed</Badge>}
-                          {sub.evergreen && <Badge variant="outline">Evergreen</Badge>}
-                          {sub.has_cancellation && <Badge variant="outline">Has Cancellation</Badge>}
-                          {sub.has_ramps && <Badge variant="outline">Has Ramps</Badge>}
-                          {sub.has_discounts && <Badge variant="outline">Has Discounts</Badge>}
-                          <Badge variant="secondary">{sub.billing_period}</Badge>
-                        </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Use Case List</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[120px]">Use Case ID</TableHead>
+                <TableHead>Product Type</TableHead>
+                <TableHead>Triggering & Timing</TableHead>
+                <TableHead className="w-[100px]">Count</TableHead>
+                <TableHead className="w-[150px]">Waterfall Status</TableHead>
+                <TableHead className="w-[120px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {useCaseItems.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    No use cases found. Add subscriptions and product categories to generate use cases.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                useCaseItems.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium text-primary">
+                      {item.use_case_id}
+                    </TableCell>
+                    <TableCell>{item.product_type}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="secondary" className="w-fit text-xs">
+                          {item.triggering}
+                        </Badge>
+                        <Badge variant="outline" className="w-fit text-xs">
+                          {item.timing}
+                        </Badge>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleSubscriptionInList(sub.id)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>All Subscriptions</CardTitle>
-          <CardDescription>
-            Add subscriptions to the use case list to improve coverage
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {subscriptions
-              .filter(s => !s.in_use_case_list)
-              .map((sub) => (
-                <div key={sub.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Checkbox
-                      checked={false}
-                      onCheckedChange={() => toggleSubscriptionInList(sub.id)}
-                    />
-                    <div className="space-y-1">
-                      <div className="font-medium text-sm">{sub.subscription_id}</div>
-                      <div className="flex flex-wrap gap-1">
-                        {sub.termed && <Badge variant="outline" className="text-xs">Termed</Badge>}
-                        {sub.evergreen && <Badge variant="outline" className="text-xs">Evergreen</Badge>}
-                        {sub.has_cancellation && <Badge variant="outline" className="text-xs">Cancellation</Badge>}
-                        {sub.has_ramps && <Badge variant="outline" className="text-xs">Ramps</Badge>}
-                        {sub.has_discounts && <Badge variant="outline" className="text-xs">Discounts</Badge>}
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleSubscriptionInList(sub.id)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add
-                  </Button>
-                </div>
-              ))}
-            {subscriptions.filter(s => !s.in_use_case_list).length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                All subscriptions have been added to the use case list
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-semibold text-primary">
+                        {item.count}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {item.status === "uploaded" ? (
+                        <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
+                          <span className="mr-1">✓</span> Uploaded
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                          <span className="mr-1">⦿</span> Pending
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {item.status === "uploaded" ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleView(item.use_case_id)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUpload(item.use_case_id)}
+                        >
+                          <Upload className="h-4 w-4 mr-1" />
+                          Upload
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
