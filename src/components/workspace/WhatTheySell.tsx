@@ -172,11 +172,6 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
               <TableHead>Product</TableHead>
               <TableHead>Rate Plan</TableHead>
               <TableHead>Charge</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>POB</TableHead>
-              <TableHead>Confidence</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Conflicts</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -190,24 +185,6 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                 <TableCell className="font-medium">{inference.product_name}</TableCell>
                 <TableCell>{inference.rate_plan_name}</TableCell>
                 <TableCell>{inference.charge_name}</TableCell>
-                <TableCell>{inference.inferred_product_category || "—"}</TableCell>
-                <TableCell>{inference.inferred_pob || "—"}</TableCell>
-                <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className={getStatusColor(inference.status)}>
-                    {inference.status.replace("_", " ")}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {inference.conflict_flags?.length > 0 ? (
-                    <Badge variant="destructive" className="gap-1">
-                      <AlertTriangle className="h-3 w-3" />
-                      {inference.conflict_flags.length}
-                    </Badge>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">None</span>
-                  )}
-                </TableCell>
                 <TableCell className="text-right">
                   <Button
                     variant="ghost"
