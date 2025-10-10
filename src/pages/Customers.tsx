@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +22,6 @@ const Customers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const { userRole } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -84,12 +82,10 @@ const Customers = () => {
             Manage revenue implementation projects
           </p>
         </div>
-        {userRole === "admin" && (
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New Customer
-          </Button>
-        )}
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          New Customer
+        </Button>
       </div>
 
       <div className="relative">

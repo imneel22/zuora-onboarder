@@ -1,4 +1,4 @@
-import { Building2, Users, Settings, LogOut } from "lucide-react";
+import { Building2, Settings, Users } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -10,11 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
-  SidebarFooter,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 const navItems = [
   { title: "Customers", url: "/", icon: Building2 },
@@ -26,8 +22,6 @@ const adminItems = [
 ];
 
 export function AppSidebar() {
-  const { userRole, signOut, user } = useAuth();
-
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-border p-4">
@@ -69,51 +63,31 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {userRole === "admin" && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Administration</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {adminItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        className={({ isActive }) =>
-                          isActive
-                            ? "bg-accent text-accent-foreground"
-                            : "hover:bg-accent/50"
-                        }
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        <SidebarGroup>
+          <SidebarGroupLabel>Administration</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {adminItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      className={({ isActive }) =>
+                        isActive
+                          ? "bg-accent text-accent-foreground"
+                          : "hover:bg-accent/50"
+                      }
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter className="border-t border-border p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">{user?.email}</span>
-          <Badge variant={userRole === "admin" ? "default" : "secondary"}>
-            {userRole}
-          </Badge>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={signOut}
-          className="w-full"
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign Out
-        </Button>
-      </SidebarFooter>
     </Sidebar>
   );
 }

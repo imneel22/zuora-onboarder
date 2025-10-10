@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, Plus, X, Info, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
 
 interface CoverageCandidate {
   id: string;
@@ -26,7 +25,6 @@ interface CoverageCandidate {
 export const CoverageSet = ({ customerId }: { customerId: string }) => {
   const [candidates, setCandidates] = useState<CoverageCandidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const { userRole } = useAuth();
 
   useEffect(() => {
     fetchCandidates();
@@ -184,12 +182,10 @@ export const CoverageSet = ({ customerId }: { customerId: string }) => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">All Subscriptions</h3>
-            {userRole === "admin" && (
-              <Button size="sm" variant="outline">
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Recompute
-              </Button>
-            )}
+            <Button size="sm" variant="outline">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Recompute
+            </Button>
           </div>
           
           <div className="space-y-3">

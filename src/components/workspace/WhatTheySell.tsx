@@ -21,7 +21,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
 
 interface PRPCInference {
   id: string;
@@ -42,7 +41,6 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedInference, setSelectedInference] = useState<PRPCInference | null>(null);
-  const { userRole } = useAuth();
 
   useEffect(() => {
     fetchInferences();
@@ -113,12 +111,10 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
         <p className="text-sm text-muted-foreground">
           PRPC-level product categorization and POB mapping with AI rationale
         </p>
-        {userRole === "admin" && (
-          <Button size="sm">
-            <CheckCircle className="mr-2 h-4 w-4" />
-            Approve Selected
-          </Button>
-        )}
+        <Button size="sm">
+          <CheckCircle className="mr-2 h-4 w-4" />
+          Approve Selected
+        </Button>
       </div>
 
       <div className="relative">

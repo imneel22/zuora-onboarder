@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle, Edit, FileText, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
 
 interface AuditEntry {
   id: string;
@@ -25,7 +24,6 @@ interface AuditEntry {
 export const AuditTrail = ({ customerId }: { customerId: string }) => {
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const { userRole } = useAuth();
 
   useEffect(() => {
     fetchAuditTrail();
@@ -188,7 +186,7 @@ export const AuditTrail = ({ customerId }: { customerId: string }) => {
         </Card>
       )}
 
-      {userRole === "admin" && auditEntries.length > 0 && (
+      {auditEntries.length > 0 && (
         <div className="flex justify-center pt-4">
           <Button>
             <CheckCircle className="mr-2 h-4 w-4" />
