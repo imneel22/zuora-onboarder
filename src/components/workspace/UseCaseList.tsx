@@ -45,11 +45,9 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([
-      fetchSubscriptions(),
-      fetchCategoryCoverage(),
-      fetchAttributeCoverage()
-    ]);
+    const subs = await fetchSubscriptions();
+    await fetchCategoryCoverage(subs);
+    fetchAttributeCoverage(subs);
     setLoading(false);
   };
 
@@ -62,7 +60,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
     if (error) {
       toast.error("Failed to load subscriptions");
       console.error(error);
-      return;
+      return [];
     }
 
     // Mock in_use_case_list - in production this would come from a junction table
@@ -72,9 +70,10 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
     }));
     
     setSubscriptions(withUseCaseFlag);
+    return withUseCaseFlag;
   };
 
-  const fetchCategoryCoverage = async () => {
+  const fetchCategoryCoverage = async (subs: Subscription[]) => {
     // Get unique product categories from PRPC inferences
     const { data: prpcs, error } = await supabase
       .from("prpc_inferences")
@@ -99,32 +98,39 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
       }
     });
 
+    const useCaseSubs = subs.filter(s => s.in_use_case_list);
+
     setCategories(
       Array.from(uniqueCategories.values()).map(cat => ({
         category: cat.category,
         pob: cat.pob,
-        covered: false, // Will be calculated based on selected subscriptions
-        covering_subscriptions: []
+        covered: useCaseSubs.length > 0, // Covered if at least one subscription in use case list
+        covering_subscriptions: useCaseSubs.map(s => s.subscription_id)
       }))
     );
   };
 
-  const fetchAttributeCoverage = async () => {
+  const fetchAttributeCoverage = (subs: Subscription[]) => {
     // Define the subscription attributes we want to cover
     const attributeTypes = [
-      { attribute: "Termed", key: "termed" },
-      { attribute: "Evergreen", key: "evergreen" },
-      { attribute: "Has Cancellation", key: "has_cancellation" },
-      { attribute: "Has Ramps", key: "has_ramps" },
-      { attribute: "Has Discounts", key: "has_discounts" }
+      { attribute: "Termed", key: "termed" as keyof Subscription },
+      { attribute: "Evergreen", key: "evergreen" as keyof Subscription },
+      { attribute: "Has Cancellation", key: "has_cancellation" as keyof Subscription },
+      { attribute: "Has Ramps", key: "has_ramps" as keyof Subscription },
+      { attribute: "Has Discounts", key: "has_discounts" as keyof Subscription }
     ];
 
+    const useCaseSubs = subs.filter(s => s.in_use_case_list);
+
     setAttributes(
-      attributeTypes.map(attr => ({
-        attribute: attr.attribute,
-        covered: false,
-        covering_subscriptions: []
-      }))
+      attributeTypes.map(attr => {
+        const coveringSubs = useCaseSubs.filter(sub => sub[attr.key] === true);
+        return {
+          attribute: attr.attribute,
+          covered: coveringSubs.length > 0,
+          covering_subscriptions: coveringSubs.map(s => s.subscription_id)
+        };
+      })
     );
   };
 
@@ -135,6 +141,10 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
         : sub
     );
     setSubscriptions(updated);
+    
+    // Recalculate coverage
+    await fetchCategoryCoverage(updated);
+    fetchAttributeCoverage(updated);
     
     // In production, persist this to a junction table
     toast.success(
