@@ -52,25 +52,32 @@ const Customers = () => {
   }, []);
 
   const fetchUsers = async () => {
-    const { data, error } = await supabase
+  const fetchUsers = async () => {
+    const { data: profilesData, error: profilesError } = await supabase
       .from("profiles")
-      .select(`
-        id,
-        full_name,
-        email,
-        user_roles (role)
-      `);
+      .select("id, full_name, email");
 
-    if (error) {
-      console.error("Failed to fetch users:", error);
+    if (profilesError) {
+      console.error("Failed to fetch profiles:", profilesError);
+      toast.error("Failed to load users");
       return;
     }
 
-    const usersWithRoles = (data || []).map((user: any) => ({
+    const { data: rolesData, error: rolesError } = await supabase
+      .from("user_roles")
+      .select("user_id, role");
+
+    if (rolesError) {
+      console.error("Failed to fetch roles:", rolesError);
+    }
+
+    const rolesMap = new Map((rolesData || []).map((r: any) => [r.user_id, r.role]));
+    
+    const usersWithRoles = (profilesData || []).map((user: any) => ({
       id: user.id,
       full_name: user.full_name || user.email,
       email: user.email,
-      role: user.user_roles?.[0]?.role || "standard"
+      role: rolesMap.get(user.id) || "standard"
     }));
 
     setUsers(usersWithRoles);
@@ -80,6 +87,7 @@ const Customers = () => {
       setSelectedUserId(usersWithRoles[0].id);
       setSelectedUserRole(usersWithRoles[0].role);
     }
+  };
   };
   const fetchCustomers = async () => {
     setLoading(true);
