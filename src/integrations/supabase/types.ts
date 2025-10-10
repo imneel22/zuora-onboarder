@@ -73,6 +73,7 @@ export type Database = {
           id: string
           industry: string | null
           name: string
+          phase: string
           status: string
           updated_at: string
           zuora_account_id: string
@@ -84,6 +85,7 @@ export type Database = {
           id?: string
           industry?: string | null
           name: string
+          phase?: string
           status?: string
           updated_at?: string
           zuora_account_id: string
@@ -95,6 +97,7 @@ export type Database = {
           id?: string
           industry?: string | null
           name?: string
+          phase?: string
           status?: string
           updated_at?: string
           zuora_account_id?: string

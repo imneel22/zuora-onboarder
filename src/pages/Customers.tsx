@@ -21,6 +21,7 @@ interface Customer {
   zuora_account_id: string;
   industry: string | null;
   status: string;
+  phase: string;
   go_live_target_date: string | null;
   assigned_user_ids: string[];
 }
@@ -72,6 +73,25 @@ const Customers = () => {
     }
   };
 
+  const getPhaseColor = (phase: string) => {
+    switch (phase) {
+      case "discovery":
+        return "bg-blue-500/10 text-blue-600 border-blue-500/20";
+      case "design":
+        return "bg-purple-500/10 text-purple-600 border-purple-500/20";
+      case "build":
+        return "bg-orange-500/10 text-orange-600 border-orange-500/20";
+      case "test":
+        return "bg-yellow-500/10 text-yellow-600 border-yellow-500/20";
+      case "deploy":
+        return "bg-green-500/10 text-green-600 border-green-500/20";
+      case "complete":
+        return "bg-slate-500/10 text-slate-600 border-slate-500/20";
+      default:
+        return "bg-muted text-muted-foreground";
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -112,6 +132,7 @@ const Customers = () => {
               <TableHead>Customer Name</TableHead>
               <TableHead>Zuora Account ID</TableHead>
               <TableHead>Industry</TableHead>
+              <TableHead>Phase</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Target Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -127,6 +148,11 @@ const Customers = () => {
                 <TableCell className="font-medium">{customer.name}</TableCell>
                 <TableCell>{customer.zuora_account_id}</TableCell>
                 <TableCell>{customer.industry || "-"}</TableCell>
+                <TableCell>
+                  <Badge className={getPhaseColor(customer.phase)} variant="outline">
+                    {customer.phase}
+                  </Badge>
+                </TableCell>
                 <TableCell>
                   <Badge className={getStatusColor(customer.status)} variant="outline">
                     {customer.status}
