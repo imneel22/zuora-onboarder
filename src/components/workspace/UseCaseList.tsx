@@ -18,6 +18,7 @@ interface Subscription {
   has_discounts: boolean;
   billing_period: string;
   in_use_case_list: boolean;
+  covered_categories?: Set<string>; // category|pob combinations this subscription covers
 }
 
 interface CategoryCoverage {
@@ -63,11 +64,36 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
       return [];
     }
 
-    // Compute minimal set: select subscriptions that maximize coverage
     const subsData = data || [];
-    const minimalSet = computeMinimalSet(subsData);
     
-    const withUseCaseFlag = subsData.map(sub => ({
+    // For each subscription, determine which product categories it covers
+    // In a real system, this would be through subscription -> rate plans -> PRPCs
+    // For now, we'll mock this by assigning categories based on subscription characteristics
+    const subsWithCategories = await Promise.all(
+      subsData.map(async (sub) => {
+        // Mock: assign categories based on subscription type
+        const categories = new Set<string>();
+        
+        // In reality, query: subscription -> rate_plans -> prpcs -> categories
+        // For demo: assign based on attributes
+        if (sub.termed) categories.add("SaaS Platform|Subscription");
+        if (sub.evergreen) categories.add("Services|Professional Services");
+        if (sub.has_ramps) categories.add("Add-on|Usage Based");
+        if (sub.has_discounts) categories.add("Infrastructure|Metered");
+        if (sub.billing_period === "monthly") categories.add("Services|One-time");
+        if (sub.billing_period === "annual") categories.add("Add-on|Subscription");
+        
+        return {
+          ...sub,
+          covered_categories: categories
+        };
+      })
+    );
+
+    // Compute minimal set: select subscriptions that maximize coverage
+    const minimalSet = computeMinimalSet(subsWithCategories);
+    
+    const withUseCaseFlag = subsWithCategories.map(sub => ({
       ...sub,
       in_use_case_list: minimalSet.has(sub.id)
     }));
@@ -77,13 +103,26 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
   };
 
   const computeMinimalSet = (subs: any[]): Set<string> => {
+    // Get all unique categories that need to be covered
+    const allCategories = new Set<string>();
+    subs.forEach(sub => {
+      if (sub.covered_categories) {
+        sub.covered_categories.forEach((cat: string) => allCategories.add(cat));
+      }
+    });
+
     // Attributes to cover
     const attributesToCover = ['termed', 'evergreen', 'has_cancellation', 'has_ramps', 'has_discounts'];
-    const covered = new Set<string>();
+    const coveredCategories = new Set<string>();
+    const coveredAttributes = new Set<string>();
     const selected = new Set<string>();
 
-    // Greedy algorithm: pick subscriptions that cover the most uncovered attributes
-    while (covered.size < attributesToCover.length && subs.length > 0) {
+    // Greedy algorithm: pick subscriptions that cover the most uncovered items
+    const maxIterations = subs.length;
+    let iterations = 0;
+    
+    while ((coveredCategories.size < allCategories.size || coveredAttributes.size < attributesToCover.length) 
+           && iterations < maxIterations) {
       let bestSub: any = null;
       let bestCoverage = 0;
 
@@ -91,8 +130,17 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
         if (selected.has(sub.id)) continue;
         
         let coverageCount = 0;
+        
+        // Count uncovered categories this sub would cover
+        if (sub.covered_categories) {
+          sub.covered_categories.forEach((cat: string) => {
+            if (!coveredCategories.has(cat)) coverageCount += 2; // Weight categories higher
+          });
+        }
+        
+        // Count uncovered attributes this sub would cover
         for (const attr of attributesToCover) {
-          if (!covered.has(attr) && sub[attr] === true) {
+          if (!coveredAttributes.has(attr) && sub[attr] === true) {
             coverageCount++;
           }
         }
@@ -106,14 +154,23 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
       if (!bestSub || bestCoverage === 0) break;
 
       selected.add(bestSub.id);
+      
+      // Mark categories as covered
+      if (bestSub.covered_categories) {
+        bestSub.covered_categories.forEach((cat: string) => coveredCategories.add(cat));
+      }
+      
+      // Mark attributes as covered
       for (const attr of attributesToCover) {
         if (bestSub[attr] === true) {
-          covered.add(attr);
+          coveredAttributes.add(attr);
         }
       }
+      
+      iterations++;
     }
 
-    // Ensure we have at least one subscription for diversity
+    // Ensure we have at least one subscription
     if (selected.size === 0 && subs.length > 0) {
       selected.add(subs[0].id);
     }
@@ -130,9 +187,11 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
       .not("inferred_product_category", "is", null);
 
     if (error) {
-      console.error(error);
+      console.error("Error fetching categories:", error);
       return;
     }
+
+    console.log("PRPC data:", prpcs);
 
     // Create unique category/pob combinations
     const uniqueCategories = new Map<string, { category: string; pob: string }>();
@@ -146,16 +205,34 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
       }
     });
 
-    const useCaseSubs = subs.filter(s => s.in_use_case_list);
+    console.log("Unique categories:", Array.from(uniqueCategories.values()));
 
-    setCategories(
-      Array.from(uniqueCategories.values()).map(cat => ({
+    const useCaseSubs = subs.filter(s => s.in_use_case_list);
+    
+    // Calculate which categories are covered by the selected subscriptions
+    const coveredCategoryKeys = new Set<string>();
+    useCaseSubs.forEach(sub => {
+      if (sub.covered_categories) {
+        sub.covered_categories.forEach(cat => coveredCategoryKeys.add(cat));
+      }
+    });
+
+    const categoriesArray = Array.from(uniqueCategories.values()).map(cat => {
+      const key = `${cat.category}|${cat.pob}`;
+      const coveringSubs = useCaseSubs.filter(sub => 
+        sub.covered_categories?.has(key)
+      );
+      
+      return {
         category: cat.category,
         pob: cat.pob,
-        covered: useCaseSubs.length > 0, // Covered if at least one subscription in use case list
-        covering_subscriptions: useCaseSubs.map(s => s.subscription_id)
-      }))
-    );
+        covered: coveringSubs.length > 0,
+        covering_subscriptions: coveringSubs.map(s => s.subscription_id)
+      };
+    });
+
+    console.log("Setting categories:", categoriesArray);
+    setCategories(categoriesArray);
   };
 
   const fetchAttributeCoverage = (subs: Subscription[]) => {
