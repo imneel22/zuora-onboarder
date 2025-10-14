@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -23,10 +23,22 @@ interface Customer {
 
 const CustomerWorkspace = () => {
   const { customerId } = useParams<{ customerId: string }>();
+  const [searchParams] = useSearchParams();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(25);
   const navigate = useNavigate();
+  
+  const tabParam = searchParams.get("tab");
+  const activeTab = tabParam === "how-they-sell" 
+    ? "how-they-sell" 
+    : tabParam === "use-cases" 
+    ? "use-case-list"
+    : tabParam === "coverage"
+    ? "coverage"
+    : tabParam === "audit"
+    ? "audit"
+    : "what-they-sell";
 
   useEffect(() => {
     if (customerId) {
@@ -118,11 +130,13 @@ const CustomerWorkspace = () => {
         <Progress value={progress} className="h-2" />
       </div>
 
-      <Tabs defaultValue="what-they-sell" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs value={activeTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="what-they-sell">What They Sell</TabsTrigger>
           <TabsTrigger value="how-they-sell">How They Sell</TabsTrigger>
-          <TabsTrigger value="use-case-list">Use Case List</TabsTrigger>
+          <TabsTrigger value="use-case-list">Use Cases</TabsTrigger>
+          <TabsTrigger value="coverage">Coverage Set</TabsTrigger>
+          <TabsTrigger value="audit">Audit Trail</TabsTrigger>
         </TabsList>
 
         <TabsContent value="what-they-sell" className="space-y-4">
@@ -135,6 +149,14 @@ const CustomerWorkspace = () => {
 
         <TabsContent value="use-case-list" className="space-y-4">
           <UseCaseList customerId={customer.id} />
+        </TabsContent>
+
+        <TabsContent value="coverage" className="space-y-4">
+          <div className="text-center text-muted-foreground py-12">Coverage Set - Coming Soon</div>
+        </TabsContent>
+
+        <TabsContent value="audit" className="space-y-4">
+          <div className="text-center text-muted-foreground py-12">Audit Trail - Coming Soon</div>
         </TabsContent>
       </Tabs>
     </div>
