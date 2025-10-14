@@ -314,11 +314,16 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
               <h3 className="text-3xl font-bold text-primary">{categoryStats.length}</h3>
               <p className="text-xs font-semibold text-muted-foreground">Product Categories</p>
             </div>
-            <Button size="sm" onClick={() => {
-              console.log("Force refresh clicked");
-              fetchCategoryStats();
-            }}>
-              Refresh
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => {
+                console.log("Refreshing data...");
+                fetchCategoryStats();
+                fetchInferences();
+              }}
+            >
+              Refresh Data
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -335,8 +340,9 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
           </div>
         </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {categoryStats.map((stat, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {categoryStats.length > 0 ? (
+            categoryStats.map((stat, index) => (
               <Card
                 key={stat.category}
                 className={`p-6 bg-gradient-to-br ${getCategoryColor(index)} hover:shadow-lg transition-all cursor-pointer hover:scale-105`}
@@ -362,11 +368,11 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                     <p className="text-xs text-muted-foreground">Subscriptions</p>
                   </div>
                   <div className="bg-background/50 rounded-lg p-3">
-                    <p className="text-lg font-bold text-warning">{(stat as any).needsReview}</p>
+                    <p className="text-lg font-bold text-warning">{(stat as any).needsReview || 0}</p>
                     <p className="text-xs text-muted-foreground">Needs Review</p>
                   </div>
                   <div className="bg-background/50 rounded-lg p-3">
-                    <p className="text-lg font-bold text-destructive">{(stat as any).lowConfidence}</p>
+                    <p className="text-lg font-bold text-destructive">{(stat as any).lowConfidence || 0}</p>
                     <p className="text-xs text-muted-foreground">Low Confidence</p>
                   </div>
                 </div>
@@ -385,16 +391,15 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                   </p>
                 </div>
               </Card>
-            ))}
-          </div>
-
-          {categoryStats.length === 0 && (
-            <div className="py-12 text-center text-muted-foreground">
-              No pricing models found
+            ))
+          ) : (
+            <div className="col-span-3 text-center py-8 text-muted-foreground">
+              No categories found. Click "Refresh Data" to load.
             </div>
           )}
         </div>
-      ) : (
+      </div>
+    ) : (
         <>
           <div className="flex gap-2">
             <div className="relative flex-1">
