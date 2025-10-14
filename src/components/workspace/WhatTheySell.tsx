@@ -176,6 +176,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
     setViewMode("details");
     setSearch("");
     setFilterBy("low");
+    fetchInferences(); // Refresh data when entering detail view
   };
 
   const handleBackToOverview = () => {
