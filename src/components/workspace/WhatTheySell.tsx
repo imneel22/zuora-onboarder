@@ -356,6 +356,7 @@ export const WhatTheySell = ({
                   <TableHead>Revenue Recognition Timing</TableHead>
                   <TableHead>Amortization Technique</TableHead>
                   <TableHead>Confidence</TableHead>
+                  <TableHead>Rationale</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -378,6 +379,9 @@ export const WhatTheySell = ({
                       </Badge>
                     </TableCell>
                     <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
+                    <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
+                      {inference.rationale || "No rationale provided"}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" onClick={e => {
                   e.stopPropagation();
