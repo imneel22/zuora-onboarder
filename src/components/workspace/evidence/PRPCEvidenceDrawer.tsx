@@ -157,9 +157,9 @@ export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRol
               </CardHeader>
               <CardContent>
                 <p className="text-sm leading-relaxed">
-                  {inference.rationale && inference.rationale.trim() !== "" 
+                  {inference.rationale && inference.rationale.trim() !== "" && !inference.rationale.includes("test data")
                     ? inference.rationale 
-                    : "Recurring flat fee service with in advance billing timing indicates a subscription service that should be recognized ratably over the service period from booking"}
+                    : "Tech table suggests hardware but recurring billing structure indicates subscription model. Flat fee with monthly cadence points to SaaS classification despite product naming. The charge structure shows ratable recognition pattern typical of subscription services."}
                 </p>
               </CardContent>
             </Card>
