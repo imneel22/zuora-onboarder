@@ -107,74 +107,30 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   };
 
   const fetchCategoryStats = async () => {
-    // Fetch aggregated PRPC counts directly from database
-    const { data: prpcData, error: prpcError } = await supabase
-      .from("prpc_inferences")
-      .select("inferred_product_category, confidence, status, needs_review")
-      .eq("customer_id", customerId);
+    // Use database function for efficient aggregation
+    const { data, error } = await supabase
+      .rpc('get_category_stats', { p_customer_id: customerId });
 
-    if (prpcError) {
-      console.error("PRPC Error:", prpcError);
+    if (error) {
+      console.error("Category stats error:", error);
       return;
     }
 
-    console.log("Total PRPCs fetched:", prpcData?.length);
+    console.log("Category Stats from DB:", data);
 
-    // Fetch subscription coverage data
-    const { data: subData, error: subError } = await supabase
-      .from("subscription_coverage_candidates")
-      .select("covers_product_categories")
-      .eq("customer_id", customerId);
+    const stats = data?.map((row: any) => ({
+      category: row.category,
+      prpcCount: parseInt(row.prpc_count),
+      subscriptionCount: parseInt(row.subscription_count),
+      avgConfidence: parseFloat(row.avg_confidence || 0),
+      approvalRate: parseFloat(row.approval_rate || 0),
+      needsReview: parseInt(row.needs_review_count),
+      lowConfidence: parseInt(row.low_confidence_count),
+    })) || [];
 
-    if (subError) {
-      console.error("Subscription Error:", subError);
-      return;
-    }
-
-    console.log("Total subscriptions fetched:", subData?.length);
-
-    const categoryMap = new Map<string, CategoryStats & { needsReview: number; lowConfidence: number }>();
-
-    // Count PRPCs by category
-    prpcData?.forEach((prpc) => {
-      const category = prpc.inferred_product_category || "Uncategorized";
-      if (!categoryMap.has(category)) {
-        categoryMap.set(category, {
-          category,
-          prpcCount: 0,
-          subscriptionCount: 0,
-          avgConfidence: 0,
-          approvalRate: 0,
-          needsReview: 0,
-          lowConfidence: 0,
-        });
-      }
-      const stats = categoryMap.get(category)!;
-      stats.prpcCount++;
-      stats.avgConfidence += prpc.confidence || 0;
-      if (prpc.status === "approved") stats.approvalRate++;
-      if (prpc.needs_review) stats.needsReview++;
-      if ((prpc.confidence || 0) < 0.5) stats.lowConfidence++;
-    });
-
-    // Count subscriptions by category
-    subData?.forEach((sub) => {
-      sub.covers_product_categories?.forEach((cat: string) => {
-        if (categoryMap.has(cat)) {
-          categoryMap.get(cat)!.subscriptionCount++;
-        }
-      });
-    });
-
-    categoryMap.forEach((stats) => {
-      stats.avgConfidence = stats.prpcCount > 0 ? stats.avgConfidence / stats.prpcCount : 0;
-      stats.approvalRate = stats.prpcCount > 0 ? (stats.approvalRate / stats.prpcCount) * 100 : 0;
-    });
-
-    const finalStats = Array.from(categoryMap.values()).sort((a, b) => b.prpcCount - a.prpcCount);
-    console.log("Category Stats:", finalStats);
-    console.log("Categories found:", finalStats.map(s => s.category));
-    setCategoryStats(finalStats);
+    console.log("Processed stats:", stats);
+    console.log("Categories found:", stats.map((s: any) => s.category));
+    setCategoryStats(stats);
   };
 
   let filteredInferences = inferences.filter((inf) =>
