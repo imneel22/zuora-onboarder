@@ -379,8 +379,10 @@ export const WhatTheySell = ({
                       </Badge>
                     </TableCell>
                     <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
-                    <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
-                      {inference.rationale || "No rationale provided"}
+                    <TableCell className="max-w-md text-sm text-muted-foreground">
+                      <div className="line-clamp-2" title={inference.rationale || "No rationale provided"}>
+                        {inference.rationale || "No rationale provided"}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" onClick={e => {
