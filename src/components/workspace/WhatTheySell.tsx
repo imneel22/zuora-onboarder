@@ -59,6 +59,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log("Component mounted, customer ID:", customerId);
     fetchUserRole();
     fetchInferences();
     fetchCategoryStats();
@@ -67,9 +68,14 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   // Refresh when switching to overview
   useEffect(() => {
     if (viewMode === 'overview') {
+      console.log("Switching to overview mode");
       fetchCategoryStats();
     }
   }, [viewMode]);
+
+  useEffect(() => {
+    console.log("Category stats updated:", categoryStats.length, "categories", categoryStats);
+  }, [categoryStats]);
 
   const fetchUserRole = async () => {
     const { data: { user } } = await supabase.auth.getUser();
