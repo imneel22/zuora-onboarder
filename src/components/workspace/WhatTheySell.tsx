@@ -111,6 +111,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
     }
     
     const { data, error } = await query
+      .order("confidence", { ascending: true }) // Order by confidence to show low confidence first
       .order("product_name")
       .limit(10000);
 
