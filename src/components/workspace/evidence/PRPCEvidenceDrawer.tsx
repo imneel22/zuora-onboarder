@@ -140,11 +140,8 @@ export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRol
         </SheetHeader>
 
         <Tabs defaultValue="rationale" className="mt-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="rationale">Why This?</TabsTrigger>
-            <TabsTrigger value="sot">Source of Truth</TabsTrigger>
-            <TabsTrigger value="conflicts">Conflicts</TabsTrigger>
-            <TabsTrigger value="impact">Impact</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-1">
+            <TabsTrigger value="rationale">Rationale</TabsTrigger>
           </TabsList>
 
           <TabsContent value="rationale" className="space-y-4">
@@ -229,84 +226,6 @@ export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRol
                 </CardContent>
               </Card>
             )}
-          </TabsContent>
-
-          <TabsContent value="sot" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Zuora Billing Snapshot</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {inference.evidence_refs && Array.isArray(inference.evidence_refs) ? (
-                  inference.evidence_refs.map((ref: any, idx: number) => (
-                    <div key={idx} className="border-l-2 border-primary/20 pl-3 py-2">
-                      <div className="text-sm font-medium">{ref.object_type || "PRPC"}</div>
-                      <div className="text-xs text-muted-foreground space-y-1 mt-1">
-                        {Object.entries(ref.fields || {}).map(([k, v]: [string, any]) => (
-                          <div key={k}>
-                            <span className="font-medium">{k}:</span> {String(v)}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No source of truth data available
-                  </p>
-                )}
-                <Button variant="outline" size="sm" className="w-full mt-2">
-                  <ExternalLink className="h-3 w-3 mr-2" />
-                  Open in Zuora
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="conflicts" className="space-y-4">
-            {inference.conflict_flags && inference.conflict_flags.length > 0 ? (
-              inference.conflict_flags.map((flag, idx) => (
-                <Card key={idx}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium">Conflict Detected</p>
-                        <p className="text-sm text-muted-foreground">{flag}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-2 text-success">
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="text-sm">No conflicts detected</span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="impact" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Change Impact Analysis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Info className="h-4 w-4 text-muted-foreground" />
-                    <span>Impact analysis will show similar PRPCs affected by reclassification</span>
-                  </div>
-                  <Button variant="outline" size="sm" className="w-full mt-2">
-                    Preview Similar PRPCs
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </SheetContent>
