@@ -257,16 +257,6 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            PRPC-level product categorization and POB mapping with AI rationale
-          </p>
-          {selectedCategory && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Viewing: <span className="font-semibold text-foreground">{selectedCategory}</span>
-            </p>
-          )}
-        </div>
         <div className="flex gap-2">
           {selectedCategory && (
             <Button variant="outline" size="sm" onClick={handleBackToOverview}>
@@ -282,6 +272,16 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
             <LayoutGrid className="h-4 w-4 mr-2" />
             Overview
           </Button>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">
+            PRPC-level product categorization and POB mapping with AI rationale
+          </p>
+          {selectedCategory && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Viewing: <span className="font-semibold text-foreground">{selectedCategory}</span>
+            </p>
+          )}
         </div>
       </div>
 
