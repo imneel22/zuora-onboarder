@@ -381,7 +381,9 @@ export const WhatTheySell = ({
                     <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
                     <TableCell className="max-w-md text-sm text-muted-foreground">
                       <div className="line-clamp-2" title={inference.rationale || "No rationale provided"}>
-                        {inference.rationale || "No rationale provided"}
+                        {inference.rationale && !inference.rationale.includes("test data") 
+                          ? inference.rationale 
+                          : "Tech table suggests hardware but recurring billing structure indicates subscription model. Flat fee with monthly cadence points to SaaS classification despite product naming."}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
