@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { WhatTheySell } from "@/components/workspace/WhatTheySell";
@@ -75,10 +72,6 @@ const CustomerWorkspace = () => {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center space-y-4">
         <p className="text-lg text-muted-foreground">Customer not found</p>
-        <Button onClick={() => navigate("/")}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Customers
-        </Button>
       </div>
     );
   }
@@ -121,35 +114,15 @@ const CustomerWorkspace = () => {
         <Progress value={progress} className="h-2" />
       </div>
 
-      <Tabs value={activeTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="what-they-sell">What They Sell</TabsTrigger>
-          <TabsTrigger value="how-they-sell">How They Sell</TabsTrigger>
-          <TabsTrigger value="use-case-list">Use Cases</TabsTrigger>
-          <TabsTrigger value="coverage">Coverage Set</TabsTrigger>
-          <TabsTrigger value="audit">Audit Trail</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="what-they-sell" className="space-y-4">
-          <WhatTheySell customerId={customer.id} />
-        </TabsContent>
-
-        <TabsContent value="how-they-sell" className="space-y-4">
-          <HowTheySell customerId={customer.id} />
-        </TabsContent>
-
-        <TabsContent value="use-case-list" className="space-y-4">
-          <UseCaseList customerId={customer.id} />
-        </TabsContent>
-
-        <TabsContent value="coverage" className="space-y-4">
-          <div className="text-center text-muted-foreground py-12">Coverage Set - Coming Soon</div>
-        </TabsContent>
-
-        <TabsContent value="audit" className="space-y-4">
-          <div className="text-center text-muted-foreground py-12">Audit Trail - Coming Soon</div>
-        </TabsContent>
-      </Tabs>
+      {activeTab === "what-they-sell" && <WhatTheySell customerId={customer.id} />}
+      {activeTab === "how-they-sell" && <HowTheySell customerId={customer.id} />}
+      {activeTab === "use-case-list" && <UseCaseList customerId={customer.id} />}
+      {activeTab === "coverage" && (
+        <div className="text-center text-muted-foreground py-12">Coverage Set - Coming Soon</div>
+      )}
+      {activeTab === "audit" && (
+        <div className="text-center text-muted-foreground py-12">Audit Trail - Coming Soon</div>
+      )}
     </div>
   );
 };
