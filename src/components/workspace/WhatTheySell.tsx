@@ -98,12 +98,14 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       .from("prpc_inferences")
       .select("*")
       .eq("customer_id", customerId)
-      .order("product_name");
+      .order("product_name")
+      .limit(10000); // Increase limit to fetch all PRPCs
 
     if (error) {
       toast.error("Failed to load inferences");
       console.error(error);
     } else {
+      console.log("Fetched inferences:", data?.length);
       setInferences(data || []);
     }
     setLoading(false);
@@ -146,23 +148,30 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
     inf.inferred_pob?.toLowerCase().includes(search.toLowerCase())
   );
 
+  console.log("Total inferences:", inferences.length);
+  console.log("After search filter:", filteredInferences.length);
+
   // Apply category filter if selected
   if (selectedCategory) {
     filteredInferences = filteredInferences.filter(
       (inf) => inf.inferred_product_category === selectedCategory
     );
+    console.log(`After category filter (${selectedCategory}):`, filteredInferences.length);
   }
 
   // Apply additional filters
   if (filterBy === "low") {
     filteredInferences = filteredInferences.filter(inf => (inf.confidence || 0) < 0.4);
+    console.log("After low confidence filter:", filteredInferences.length);
   } else if (filterBy === "medium") {
     filteredInferences = filteredInferences.filter(inf => {
       const conf = inf.confidence || 0;
       return conf >= 0.4 && conf < 0.7;
     });
+    console.log("After medium confidence filter:", filteredInferences.length);
   } else if (filterBy === "high") {
     filteredInferences = filteredInferences.filter(inf => (inf.confidence || 0) >= 0.7);
+    console.log("After high confidence filter:", filteredInferences.length);
   } else if (filterBy === "conflicts") {
     filteredInferences = filteredInferences.filter(inf => inf.conflict_flags?.length > 0);
   } else if (filterBy === "needs_review") {
