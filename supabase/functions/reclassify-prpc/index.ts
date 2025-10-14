@@ -65,13 +65,10 @@ Original Rationale: ${inference.rationale}
 
 User Feedback: ${feedback}
 
-Based on the user's feedback, provide a NEW classification. Consider:
-1. Revenue Recognition Timing (upon booking, upon billing, upon event)
-2. Amortization Technique (ratable over time, immediate)
-3. Product Category
-4. Pattern of Business (POB)
-
-Provide a clear rationale explaining why this new classification better aligns with the user's feedback.`;
+Based on the user's feedback, provide a NEW classification with:
+1. Product Category
+2. Pattern of Business (POB)
+3. A clear rationale explaining why this new classification better aligns with the user's feedback.`;
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -101,20 +98,10 @@ Provide a clear rationale explaining why this new classification better aligns w
               properties: {
                 category: { type: 'string', description: 'Product category' },
                 pob: { type: 'string', description: 'Pattern of business' },
-                revenue_recognition_timing: { 
-                  type: 'string', 
-                  enum: ['upon booking', 'upon billing', 'upon event'],
-                  description: 'When revenue should be recognized'
-                },
-                amortization_technique: { 
-                  type: 'string', 
-                  enum: ['ratable over time', 'immediate'],
-                  description: 'How to amortize the revenue'
-                },
                 rationale: { type: 'string', description: 'Explanation for the classification' },
                 confidence: { type: 'number', description: 'Confidence score between 0 and 1' }
               },
-              required: ['category', 'pob', 'revenue_recognition_timing', 'amortization_technique', 'rationale', 'confidence']
+              required: ['category', 'pob', 'rationale', 'confidence']
             }
           }
         }],
