@@ -259,7 +259,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">
-            PRPC-level pricing model categorization and POB mapping with AI rationale
+            PRPC-level product categorization and POB mapping with AI rationale
           </p>
           {selectedCategory && (
             <p className="text-xs text-muted-foreground mt-1">
@@ -291,7 +291,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-2xl font-bold">{categoryStats.length}</h3>
-<p className="text-sm text-muted-foreground">Pricing Models</p>
+<p className="text-sm text-muted-foreground">Product Categories</p>
               </div>
               <TrendingUp className="h-8 w-8 text-primary" />
             </div>
@@ -333,7 +333,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                     {getCategoryIcon(stat.category)}
                     <div>
                       <h4 className="font-semibold text-lg">{stat.category}</h4>
-                      <p className="text-xs text-muted-foreground">Pricing Model</p>
+                      <p className="text-xs text-muted-foreground">Product Category</p>
                     </div>
                   </div>
                   <Badge variant="outline" className="text-xs">
@@ -389,7 +389,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search products, rate plans, pricing models..."
+                placeholder="Search products, rate plans, product categories..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -417,7 +417,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                   <TableHead>Product</TableHead>
                   <TableHead>Rate Plan</TableHead>
                   <TableHead>Charge</TableHead>
-                  <TableHead>Pricing Model</TableHead>
+                  <TableHead>Product Category</TableHead>
                   <TableHead>POB</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Confidence</TableHead>
