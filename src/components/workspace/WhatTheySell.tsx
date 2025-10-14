@@ -163,14 +163,10 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
 
   console.log("Total inferences:", inferences.length);
   console.log("After search filter:", filteredInferences.length);
+  console.log("Selected category:", selectedCategory);
+  console.log("Filter by:", filterBy);
 
-  // Apply category filter if selected
-  if (selectedCategory) {
-    filteredInferences = filteredInferences.filter(
-      (inf) => inf.inferred_product_category === selectedCategory
-    );
-    console.log(`After category filter (${selectedCategory}):`, filteredInferences.length);
-  }
+  // Don't filter by category here since we already filtered in the database query
 
   // Apply additional filters
   if (filterBy === "low") {
