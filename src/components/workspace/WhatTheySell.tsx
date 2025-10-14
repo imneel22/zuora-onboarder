@@ -56,6 +56,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   const [filterBy, setFilterBy] = useState<string>("all");
   const [userRole, setUserRole] = useState<string>("standard");
   const [viewMode, setViewMode] = useState<"overview" | "details">("overview");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUserRole();
@@ -113,7 +114,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       return;
     }
 
-    const categoryMap = new Map<string, CategoryStats>();
+    const categoryMap = new Map<string, CategoryStats & { needsReview: number; lowConfidence: number }>();
 
     prpcData?.forEach((prpc) => {
       const category = prpc.inferred_product_category || "Uncategorized";
@@ -124,12 +125,16 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
           subscriptionCount: 0,
           avgConfidence: 0,
           approvalRate: 0,
+          needsReview: 0,
+          lowConfidence: 0,
         });
       }
       const stats = categoryMap.get(category)!;
       stats.prpcCount++;
       stats.avgConfidence += prpc.confidence || 0;
       if (prpc.status === "approved") stats.approvalRate++;
+      if (prpc.needs_review) stats.needsReview++;
+      if ((prpc.confidence || 0) < 0.5) stats.lowConfidence++;
     });
 
     subData?.forEach((sub) => {
@@ -156,6 +161,13 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
     inf.inferred_pob?.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Apply category filter if selected
+  if (selectedCategory) {
+    filteredInferences = filteredInferences.filter(
+      (inf) => inf.inferred_product_category === selectedCategory
+    );
+  }
+
   // Apply additional filters
   if (filterBy === "low_confidence") {
     filteredInferences = filteredInferences.filter(inf => (inf.confidence || 0) < 0.5);
@@ -166,6 +178,18 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   } else if (filterBy === "not_approved") {
     filteredInferences = filteredInferences.filter(inf => inf.status !== "approved");
   }
+
+  const handleCategoryClick = (category: string) => {
+    setSelectedCategory(category);
+    setViewMode("details");
+    setSearch("");
+    setFilterBy("all");
+  };
+
+  const handleBackToOverview = () => {
+    setSelectedCategory(null);
+    setViewMode("overview");
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -218,14 +242,27 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          PRPC-level product categorization and POB mapping with AI rationale
-        </p>
+        <div>
+          <p className="text-sm text-muted-foreground">
+            PRPC-level product categorization and POB mapping with AI rationale
+          </p>
+          {selectedCategory && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Viewing: <span className="font-semibold text-foreground">{selectedCategory}</span>
+            </p>
+          )}
+        </div>
         <div className="flex gap-2">
+          {selectedCategory && (
+            <Button variant="outline" size="sm" onClick={handleBackToOverview}>
+              Back to Overview
+            </Button>
+          )}
           <Button
             variant={viewMode === "overview" ? "default" : "outline"}
             size="sm"
             onClick={() => setViewMode("overview")}
+            disabled={!!selectedCategory}
           >
             <LayoutGrid className="h-4 w-4 mr-2" />
             Overview
@@ -277,11 +314,12 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
             </div>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {categoryStats.map((stat, index) => (
               <Card
                 key={stat.category}
-                className={`p-6 bg-gradient-to-br ${getCategoryColor(index)} hover:shadow-lg transition-shadow cursor-pointer`}
+                className={`p-6 bg-gradient-to-br ${getCategoryColor(index)} hover:shadow-lg transition-all cursor-pointer hover:scale-105`}
+                onClick={() => handleCategoryClick(stat.category)}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -296,7 +334,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                   </Badge>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="bg-background/50 rounded-lg p-3">
                     <p className="text-2xl font-bold text-primary">{stat.prpcCount}</p>
                     <p className="text-xs text-muted-foreground">PRPCs</p>
@@ -305,14 +343,28 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                     <p className="text-2xl font-bold text-accent">{stat.subscriptionCount}</p>
                     <p className="text-xs text-muted-foreground">Subscriptions</p>
                   </div>
+                  <div className="bg-background/50 rounded-lg p-3">
+                    <p className="text-lg font-bold text-warning">{(stat as any).needsReview}</p>
+                    <p className="text-xs text-muted-foreground">Needs Review</p>
+                  </div>
+                  <div className="bg-background/50 rounded-lg p-3">
+                    <p className="text-lg font-bold text-destructive">{(stat as any).lowConfidence}</p>
+                    <p className="text-xs text-muted-foreground">Low Confidence</p>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Confidence Level</span>
+                    <span className="text-muted-foreground">Avg Confidence</span>
                     <span className="font-semibold">{Math.round(stat.avgConfidence * 100)}%</span>
                   </div>
                   <Progress value={stat.avgConfidence * 100} className="h-2" />
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <p className="text-xs text-muted-foreground text-center">
+                    Click to view details →
+                  </p>
                 </div>
               </Card>
             ))}
@@ -358,6 +410,10 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                   <TableHead>Product</TableHead>
                   <TableHead>Rate Plan</TableHead>
                   <TableHead>Charge</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>POB</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Confidence</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -371,6 +427,22 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                     <TableCell className="font-medium">{inference.product_name}</TableCell>
                     <TableCell>{inference.rate_plan_name}</TableCell>
                     <TableCell>{inference.charge_name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {inference.inferred_product_category || "N/A"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {inference.inferred_pob || "N/A"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getStatusColor(inference.status)}>
+                        {inference.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
