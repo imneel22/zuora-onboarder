@@ -102,15 +102,6 @@ const CustomerWorkspace = () => {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/")}
-            className="mb-2"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Customers
-          </Button>
           <h1 className="text-3xl font-bold tracking-tight">{customer.name}</h1>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span>Account: {customer.zuora_account_id}</span>

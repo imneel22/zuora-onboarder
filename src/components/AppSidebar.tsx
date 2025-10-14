@@ -47,12 +47,15 @@ export function AppSidebar() {
     }
   };
 
+  const searchParams = new URLSearchParams(location.search);
+  const currentTab = searchParams.get("tab") || "what-they-sell";
+
   const workspaceItems = customerId ? [
-    { title: "What They Sell", url: `/customer/${customerId}?tab=what-they-sell`, icon: Package },
-    { title: "How They Sell", url: `/customer/${customerId}?tab=how-they-sell`, icon: ShoppingCart },
-    { title: "Use Cases", url: `/customer/${customerId}?tab=use-cases`, icon: CheckSquare },
-    { title: "Coverage Set", url: `/customer/${customerId}?tab=coverage`, icon: Shield },
-    { title: "Audit Trail", url: `/customer/${customerId}?tab=audit`, icon: FileText },
+    { title: "What They Sell", tab: "what-they-sell", icon: Package },
+    { title: "How They Sell", tab: "how-they-sell", icon: ShoppingCart },
+    { title: "Use Cases", tab: "use-cases", icon: CheckSquare },
+    { title: "Coverage Set", tab: "coverage", icon: Shield },
+    { title: "Audit Trail", tab: "audit", icon: FileText },
   ] : [];
 
   return (
@@ -94,23 +97,26 @@ export function AppSidebar() {
               <SidebarGroupLabel>Workspace</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {workspaceItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to={item.url}
-                          className={({ isActive }) =>
-                            isActive
-                              ? "bg-accent text-accent-foreground"
-                              : "hover:bg-accent/50"
-                          }
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {workspaceItems.map((item) => {
+                    const isActive = currentTab === item.tab;
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild isActive={isActive}>
+                          <a
+                            href={`/customer/${customerId}?tab=${item.tab}`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate(`/customer/${customerId}?tab=${item.tab}`);
+                            }}
+                            className={isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"}
+                          >
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </a>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
