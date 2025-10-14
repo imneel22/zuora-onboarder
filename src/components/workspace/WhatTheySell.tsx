@@ -380,17 +380,17 @@ export const WhatTheySell = ({
                     </TableCell>
                     <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
                     <TableCell 
-                      className="max-w-md text-sm cursor-pointer hover:bg-muted/50 transition-colors group"
+                      className="max-w-xs text-sm cursor-pointer hover:bg-muted/50 transition-colors group"
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedInference(inference);
                       }}
                     >
                       <div className="flex items-start gap-2">
-                        <div className="line-clamp-2 flex-1 group-hover:text-foreground transition-colors">
+                        <div className="line-clamp-1 flex-1 group-hover:text-foreground transition-colors">
                           {inference.rationale && !inference.rationale.includes("test data") 
                             ? inference.rationale 
-                            : "Tech table suggests hardware but recurring billing structure indicates subscription model. Flat fee with monthly cadence points to SaaS classification despite product naming."}
+                            : "Recurring billing suggests SaaS despite hardware naming"}
                         </div>
                         <Info className="h-4 w-4 flex-shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
                       </div>
