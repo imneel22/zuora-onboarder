@@ -68,6 +68,11 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
     fetchCategoryStats();
   }, [customerId]);
 
+  // Refetch when category changes (including when going back to overview)
+  useEffect(() => {
+    fetchInferences();
+  }, [selectedCategory]);
+
   // Refresh when switching to overview
   useEffect(() => {
     if (viewMode === 'overview') {
@@ -94,18 +99,26 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
 
   const fetchInferences = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    
+    let query = supabase
       .from("prpc_inferences")
       .select("*")
-      .eq("customer_id", customerId)
+      .eq("customer_id", customerId);
+    
+    // If viewing a specific category, filter in the query
+    if (selectedCategory) {
+      query = query.eq("inferred_product_category", selectedCategory);
+    }
+    
+    const { data, error } = await query
       .order("product_name")
-      .limit(10000); // Increase limit to fetch all PRPCs
+      .limit(10000);
 
     if (error) {
       toast.error("Failed to load inferences");
       console.error(error);
     } else {
-      console.log("Fetched inferences:", data?.length);
+      console.log("Fetched inferences:", data?.length, "for category:", selectedCategory || "all");
       setInferences(data || []);
     }
     setLoading(false);
@@ -185,7 +198,6 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
     setViewMode("details");
     setSearch("");
     setFilterBy("low");
-    fetchInferences(); // Refresh data when entering detail view
   };
 
   const handleBackToOverview = () => {
