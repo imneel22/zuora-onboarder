@@ -17,7 +17,6 @@ import {
 import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, Cloud, Cpu, Code, Sparkles, Layers, Gift, Users, Briefcase, HeadphonesIcon, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
-import { Progress } from "@/components/ui/progress";
 
 interface PRPCInference {
   id: string;
@@ -45,6 +44,10 @@ interface CategoryStats {
   subscriptionCount: number;
   avgConfidence: number;
   approvalRate: number;
+  needsReview?: number;
+  lowConfidence?: number;
+  mediumConfidence?: number;
+  highConfidence?: number;
 }
 
 export const WhatTheySell = ({ customerId }: { customerId: string }) => {
@@ -126,6 +129,8 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       approvalRate: parseFloat(row.approval_rate || 0),
       needsReview: parseInt(row.needs_review_count),
       lowConfidence: parseInt(row.low_confidence_count),
+      mediumConfidence: parseInt(row.medium_confidence_count),
+      highConfidence: parseInt(row.high_confidence_count),
     })) || [];
 
     console.log("Processed stats:", stats);
@@ -334,22 +339,21 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                     <p className="text-2xl font-bold text-accent">{stat.subscriptionCount}</p>
                     <p className="text-xs text-muted-foreground">Subscriptions</p>
                   </div>
-                  <div className="bg-background/50 rounded-lg p-3">
-                    <p className="text-lg font-bold text-warning">{(stat as any).needsReview || 0}</p>
-                    <p className="text-xs text-muted-foreground">Needs Review</p>
-                  </div>
-                  <div className="bg-background/50 rounded-lg p-3">
-                    <p className="text-lg font-bold text-destructive">{(stat as any).lowConfidence || 0}</p>
-                    <p className="text-xs text-muted-foreground">Low Confidence</p>
-                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Avg Confidence</span>
-                    <span className="font-semibold">{Math.round(stat.avgConfidence * 100)}%</span>
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="bg-success/10 rounded-lg p-2 border border-success/20">
+                    <p className="text-lg font-bold text-success">{stat.highConfidence || 0}</p>
+                    <p className="text-xs text-muted-foreground">High Conf</p>
                   </div>
-                  <Progress value={stat.avgConfidence * 100} className="h-2" />
+                  <div className="bg-warning/10 rounded-lg p-2 border border-warning/20">
+                    <p className="text-lg font-bold text-warning">{stat.mediumConfidence || 0}</p>
+                    <p className="text-xs text-muted-foreground">Med Conf</p>
+                  </div>
+                  <div className="bg-destructive/10 rounded-lg p-2 border border-destructive/20">
+                    <p className="text-lg font-bold text-destructive">{stat.lowConfidence || 0}</p>
+                    <p className="text-xs text-muted-foreground">Low Conf</p>
+                  </div>
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-border/50">

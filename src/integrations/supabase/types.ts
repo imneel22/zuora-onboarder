@@ -472,7 +472,9 @@ export type Database = {
           approval_rate: number
           avg_confidence: number
           category: string
+          high_confidence_count: number
           low_confidence_count: number
+          medium_confidence_count: number
           needs_review_count: number
           prpc_count: number
           subscription_count: number
