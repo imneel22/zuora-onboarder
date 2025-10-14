@@ -466,6 +466,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_category_stats: {
+        Args: { p_customer_id: string }
+        Returns: {
+          approval_rate: number
+          avg_confidence: number
+          category: string
+          low_confidence_count: number
+          needs_review_count: number
+          prpc_count: number
+          subscription_count: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
