@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, Cloud, Cpu, Code, Sparkles, Layers, Gift, Users, Briefcase, HeadphonesIcon, GraduationCap } from "lucide-react";
+import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, Cloud, Cpu, Code, Sparkles, Layers, Gift, Users, Briefcase, HeadphonesIcon, GraduationCap, Info } from "lucide-react";
 import { toast } from "sonner";
 import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
 interface PRPCInference {
@@ -379,11 +379,20 @@ export const WhatTheySell = ({
                       </Badge>
                     </TableCell>
                     <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
-                    <TableCell className="max-w-md text-sm text-muted-foreground">
-                      <div className="line-clamp-2" title={inference.rationale || "No rationale provided"}>
-                        {inference.rationale && !inference.rationale.includes("test data") 
-                          ? inference.rationale 
-                          : "Tech table suggests hardware but recurring billing structure indicates subscription model. Flat fee with monthly cadence points to SaaS classification despite product naming."}
+                    <TableCell 
+                      className="max-w-md text-sm cursor-pointer hover:bg-muted/50 transition-colors group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedInference(inference);
+                      }}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className="line-clamp-2 flex-1 group-hover:text-foreground transition-colors">
+                          {inference.rationale && !inference.rationale.includes("test data") 
+                            ? inference.rationale 
+                            : "Tech table suggests hardware but recurring billing structure indicates subscription model. Flat fee with monthly cadence points to SaaS classification despite product naming."}
+                        </div>
+                        <Info className="h-4 w-4 flex-shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
