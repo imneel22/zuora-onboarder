@@ -154,7 +154,9 @@ export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRol
               </CardHeader>
               <CardContent>
                 <p className="text-sm leading-relaxed">
-                  {inference.rationale || "Recurring flat fee service with in advance billing timing indicates a subscription service that should be recognized ratably over the service period from booking"}
+                  {inference.rationale && inference.rationale.trim() !== "" 
+                    ? inference.rationale 
+                    : "Recurring flat fee service with in advance billing timing indicates a subscription service that should be recognized ratably over the service period from booking"}
                 </p>
               </CardContent>
             </Card>
