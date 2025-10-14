@@ -323,9 +323,6 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                       <p className="text-xs text-muted-foreground">Product Category</p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-xs">
-                    {Math.round(stat.approvalRate)}% Approved
-                  </Badge>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-4">
