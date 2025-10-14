@@ -248,9 +248,6 @@ export const WhatTheySell = ({
           </Button>
         </div>
         <div>
-          <p className="text-sm text-muted-foreground">
-            PRPC-level product categorization and POB mapping with AI rationale
-          </p>
           {selectedCategory && <p className="text-xs text-muted-foreground mt-1">
               Viewing: <span className="font-semibold text-foreground">{selectedCategory}</span>
             </p>}
