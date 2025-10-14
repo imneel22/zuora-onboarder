@@ -40,30 +40,26 @@ interface Props {
 
 export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRole }: Props) => {
   const [editMode, setEditMode] = useState(false);
-  const [category, setCategory] = useState("");
-  const [pob, setPob] = useState("");
-  const [reason, setReason] = useState("");
+  const [feedback, setFeedback] = useState("");
 
   if (!inference) return null;
 
-  const handleReclassify = async () => {
-    if (!category || !pob || !reason) {
-      toast.error("Please fill in all fields");
+  const handleSubmitFeedback = async () => {
+    if (!feedback.trim()) {
+      toast.error("Please provide feedback");
       return;
     }
 
     const { error } = await supabase
       .from("prpc_inferences")
       .update({
-        inferred_product_category: category,
-        inferred_pob: pob,
-        status: "user_adjusted",
+        status: "needs_review",
         last_reviewed_at: new Date().toISOString()
       })
       .eq("id", inference.id);
 
     if (error) {
-      toast.error("Failed to reclassify");
+      toast.error("Failed to submit feedback");
       return;
     }
 
@@ -72,21 +68,23 @@ export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRol
     if (user) {
       await supabase.from("audit_log").insert({
         actor: user.id,
-        action: "reclassify",
+        action: "feedback",
         entity_type: "prpc",
         entity_id: inference.id,
         customer_id: inference.id,
         before_json: {
-          category: inference.inferred_product_category,
-          pob: inference.inferred_pob
+          status: inference.status
         } as any,
-        after_json: { category, pob } as any
+        after_json: { 
+          status: "needs_review",
+          feedback: feedback 
+        } as any
       });
     }
 
-    toast.success("PRPC reclassified");
+    toast.success("Feedback submitted");
     setEditMode(false);
-    setReason("");
+    setFeedback("");
     onUpdate();
   };
 
@@ -179,7 +177,7 @@ export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRol
             {!editMode ? (
               <div className="space-y-2">
                 <Button onClick={() => setEditMode(true)} className="w-full">
-                  Re-classify PRPC
+                  Provide Feedback
                 </Button>
                 {userRole === "admin" && inference.status !== "approved" && (
                   <Button onClick={handleApprove} variant="outline" className="w-full">
@@ -192,32 +190,17 @@ export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRol
               <Card>
                 <CardContent className="pt-6 space-y-4">
                   <div className="space-y-2">
-                    <Label>Category</Label>
-                    <Input
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      placeholder="e.g., Licenses"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>POB</Label>
-                    <Input
-                      value={pob}
-                      onChange={(e) => setPob(e.target.value)}
-                      placeholder="e.g., Subscription"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Reason (required)</Label>
+                    <Label>Your Feedback</Label>
                     <Textarea
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                      placeholder="Why are you making this change?"
+                      value={feedback}
+                      onChange={(e) => setFeedback(e.target.value)}
+                      placeholder="Explain in plain English why you disagree with this classification..."
+                      rows={5}
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Button onClick={handleReclassify} className="flex-1">
-                      Save Changes
+                    <Button onClick={handleSubmitFeedback} className="flex-1">
+                      Submit Feedback
                     </Button>
                     <Button onClick={() => setEditMode(false)} variant="outline">
                       Cancel
