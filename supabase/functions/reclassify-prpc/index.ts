@@ -68,7 +68,11 @@ User Feedback: ${feedback}
 Based on the user's feedback, provide a NEW classification with:
 1. Product Category
 2. Pattern of Business (POB)
-3. A clear rationale explaining why this new classification better aligns with the user's feedback.`;
+3. A detailed rationale that:
+   - Explains different signals from the data (e.g., "tech table suggests hardware but recurring structure indicates subscription structure")
+   - Addresses any conflicts between different data points
+   - Clearly explains why this classification aligns with the user's feedback
+   - Mentions specific attributes like billing frequency, charge structure, and product naming that influenced the decision`;
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -98,7 +102,7 @@ Based on the user's feedback, provide a NEW classification with:
               properties: {
                 category: { type: 'string', description: 'Product category' },
                 pob: { type: 'string', description: 'Pattern of business' },
-                rationale: { type: 'string', description: 'Explanation for the classification' },
+                rationale: { type: 'string', description: 'Detailed explanation that discusses different signals, conflicts, and reasoning. Example: "Tech table suggests hardware but recurring billing structure indicates subscription model"' },
                 confidence: { type: 'number', description: 'Confidence score between 0 and 1' }
               },
               required: ['category', 'pob', 'rationale', 'confidence']
