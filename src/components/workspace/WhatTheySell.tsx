@@ -372,94 +372,134 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       </div>
     ) : (
         <>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search products, rate plans, product categories..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={filterBy} onValueChange={setFilterBy}>
-              <SelectTrigger className="w-[200px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filter by..." />
-              </SelectTrigger>
-              <SelectContent className="bg-background z-50">
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="low_confidence">Low Confidence</SelectItem>
-                <SelectItem value="conflicts">Has Conflicts</SelectItem>
-                <SelectItem value="needs_review">Needs Review</SelectItem>
-                <SelectItem value="not_approved">Not Approved</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Confidence Buckets View */}
+          <div className="space-y-6">
+            {/* High Confidence Bucket */}
+            <Card className="p-6 bg-gradient-to-br from-success/10 to-success/5 border-success/30">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-success/20 rounded-lg">
+                    <CheckCircle className="h-6 w-6 text-success" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-success">High Confidence</h3>
+                    <p className="text-sm text-muted-foreground">≥ 70% confidence</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-success">
+                    {filteredInferences.filter(inf => (inf.confidence || 0) >= 0.7).length}
+                  </p>
+                  <p className="text-xs text-muted-foreground">PRPCs</p>
+                </div>
+              </div>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {filteredInferences
+                  .filter(inf => (inf.confidence || 0) >= 0.7)
+                  .map((inference) => (
+                    <div
+                      key={inference.id}
+                      className="p-3 bg-background/80 rounded-lg hover:bg-background cursor-pointer transition-colors"
+                      onClick={() => setSelectedInference(inference)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{inference.product_name}</p>
+                          <p className="text-xs text-muted-foreground">{inference.charge_name}</p>
+                        </div>
+                        {getConfidenceBadge(inference.confidence)}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </Card>
+
+            {/* Medium Confidence Bucket */}
+            <Card className="p-6 bg-gradient-to-br from-warning/10 to-warning/5 border-warning/30">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-warning/20 rounded-lg">
+                    <AlertTriangle className="h-6 w-6 text-warning" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-warning">Medium Confidence</h3>
+                    <p className="text-sm text-muted-foreground">40% - 69% confidence</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-warning">
+                    {filteredInferences.filter(inf => {
+                      const conf = inf.confidence || 0;
+                      return conf >= 0.4 && conf < 0.7;
+                    }).length}
+                  </p>
+                  <p className="text-xs text-muted-foreground">PRPCs</p>
+                </div>
+              </div>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {filteredInferences
+                  .filter(inf => {
+                    const conf = inf.confidence || 0;
+                    return conf >= 0.4 && conf < 0.7;
+                  })
+                  .map((inference) => (
+                    <div
+                      key={inference.id}
+                      className="p-3 bg-background/80 rounded-lg hover:bg-background cursor-pointer transition-colors"
+                      onClick={() => setSelectedInference(inference)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{inference.product_name}</p>
+                          <p className="text-xs text-muted-foreground">{inference.charge_name}</p>
+                        </div>
+                        {getConfidenceBadge(inference.confidence)}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </Card>
+
+            {/* Low Confidence Bucket */}
+            <Card className="p-6 bg-gradient-to-br from-destructive/10 to-destructive/5 border-destructive/30">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-destructive/20 rounded-lg">
+                    <AlertTriangle className="h-6 w-6 text-destructive" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-destructive">Low Confidence</h3>
+                    <p className="text-sm text-muted-foreground">&lt; 40% confidence</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-destructive">
+                    {filteredInferences.filter(inf => (inf.confidence || 0) < 0.4).length}
+                  </p>
+                  <p className="text-xs text-muted-foreground">PRPCs</p>
+                </div>
+              </div>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {filteredInferences
+                  .filter(inf => (inf.confidence || 0) < 0.4)
+                  .map((inference) => (
+                    <div
+                      key={inference.id}
+                      className="p-3 bg-background/80 rounded-lg hover:bg-background cursor-pointer transition-colors"
+                      onClick={() => setSelectedInference(inference)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{inference.product_name}</p>
+                          <p className="text-xs text-muted-foreground">{inference.charge_name}</p>
+                        </div>
+                        {getConfidenceBadge(inference.confidence)}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </Card>
           </div>
-
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Rate Plan</TableHead>
-                  <TableHead>Charge</TableHead>
-                  <TableHead>Product Category</TableHead>
-                  <TableHead>POB</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Confidence</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredInferences.map((inference) => (
-                  <TableRow
-                    key={inference.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => setSelectedInference(inference)}
-                  >
-                    <TableCell className="font-medium">{inference.product_name}</TableCell>
-                    <TableCell>{inference.rate_plan_name}</TableCell>
-                    <TableCell>{inference.charge_name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {inference.inferred_product_category || "N/A"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {inference.inferred_pob || "N/A"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getStatusColor(inference.status)}>
-                        {inference.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedInference(inference);
-                        }}
-                      >
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-
-          {filteredInferences.length === 0 && (
-            <div className="py-12 text-center text-muted-foreground">
-              No PRPC inferences found
-            </div>
-          )}
         </>
       )}
 
