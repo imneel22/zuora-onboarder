@@ -356,7 +356,7 @@ export const WhatTheySell = ({
                 <TableRow>
                   <TableHead>Product Rate Plan Charge</TableHead>
                   <TableHead>Product Category</TableHead>
-                  <TableHead>Charge</TableHead>
+                  <TableHead>Revenue Recognition Timing</TableHead>
                   <TableHead>POB</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Confidence</TableHead>
@@ -371,7 +371,11 @@ export const WhatTheySell = ({
                         {inference.inferred_product_category || "N/A"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{inference.charge_name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {(inference as any).revenue_recognition_timing || "upon billing"}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs">
                         {inference.inferred_pob || "N/A"}
