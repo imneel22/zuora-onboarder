@@ -64,6 +64,13 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
     fetchCategoryStats();
   }, [customerId]);
 
+  // Refresh when switching to overview
+  useEffect(() => {
+    if (viewMode === 'overview') {
+      fetchCategoryStats();
+    }
+  }, [viewMode]);
+
   const fetchUserRole = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
