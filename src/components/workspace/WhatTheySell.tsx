@@ -358,7 +358,6 @@ export const WhatTheySell = ({
                   <TableHead>Product Category</TableHead>
                   <TableHead>Revenue Recognition Timing</TableHead>
                   <TableHead>Amortization Technique</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead>Confidence</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -379,11 +378,6 @@ export const WhatTheySell = ({
                     <TableCell>
                       <Badge variant="outline" className="text-xs capitalize">
                         {(inference as any).amortization_technique || "ratable over time"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getStatusColor(inference.status)}>
-                        {inference.status}
                       </Badge>
                     </TableCell>
                     <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
