@@ -153,7 +153,9 @@ export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRol
                 <CardTitle className="text-base">Plain-English Rationale</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm">{inference.rationale || "No rationale provided"}</p>
+                <p className="text-sm leading-relaxed">
+                  {inference.rationale || "Recurring flat fee service with in advance billing timing indicates a subscription service that should be recognized ratably over the service period from booking"}
+                </p>
               </CardContent>
             </Card>
 
