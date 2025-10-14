@@ -295,7 +295,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
               </div>
               <TrendingUp className="h-8 w-8 text-primary" />
             </div>
-            <div className="grid grid-cols-3 gap-4 mt-4">
+            <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
                 <p className="text-2xl font-bold text-accent">{inferences.length}</p>
                 <p className="text-xs text-muted-foreground">Total PRPCs</p>
@@ -305,18 +305,6 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                   {categoryStats.reduce((sum, cat) => sum + cat.subscriptionCount, 0)}
                 </p>
                 <p className="text-xs text-muted-foreground">Subscriptions</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-primary">
-                  {categoryStats.length > 0
-                    ? Math.round(
-                        categoryStats.reduce((sum, cat) => sum + cat.avgConfidence, 0) /
-                          categoryStats.length *
-                          100
-                      )
-                    : 0}%
-                </p>
-                <p className="text-xs text-muted-foreground">Avg Confidence</p>
               </div>
             </div>
           </Card>
