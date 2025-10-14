@@ -288,12 +288,9 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       {viewMode === "overview" ? (
         <div className="space-y-4">
           <Card className="p-6 bg-gradient-to-br from-primary/10 to-accent/10">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-2xl font-bold">{categoryStats.length}</h3>
-<p className="text-sm text-muted-foreground">Product Categories</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-primary" />
+            <div className="mb-4">
+              <h3 className="text-2xl font-bold">{categoryStats.length}</h3>
+              <p className="text-sm text-muted-foreground">Product Categories</p>
             </div>
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
