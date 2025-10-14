@@ -110,7 +110,8 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
     const { data: prpcData, error: prpcError } = await supabase
       .from("prpc_inferences")
       .select("*")
-      .eq("customer_id", customerId);
+      .eq("customer_id", customerId)
+      .limit(10000);
 
     if (prpcError) {
       console.error("PRPC Error:", prpcError);
@@ -122,7 +123,8 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
     const { data: subData, error: subError } = await supabase
       .from("subscription_coverage_candidates")
       .select("subscription_id, covers_product_categories")
-      .eq("customer_id", customerId);
+      .eq("customer_id", customerId)
+      .limit(150000);
 
     if (subError) {
       console.error("Subscription Error:", subError);
