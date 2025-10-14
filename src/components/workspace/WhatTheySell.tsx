@@ -107,9 +107,11 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       .eq("customer_id", customerId);
 
     if (prpcError) {
-      console.error(prpcError);
+      console.error("PRPC Error:", prpcError);
       return;
     }
+
+    console.log("Total PRPCs fetched:", prpcData?.length);
 
     const { data: subData, error: subError } = await supabase
       .from("subscription_coverage_candidates")
@@ -117,9 +119,11 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       .eq("customer_id", customerId);
 
     if (subError) {
-      console.error(subError);
+      console.error("Subscription Error:", subError);
       return;
     }
+
+    console.log("Total subscriptions fetched:", subData?.length);
 
     const categoryMap = new Map<string, CategoryStats & { needsReview: number; lowConfidence: number }>();
 
@@ -157,7 +161,9 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       stats.approvalRate = stats.prpcCount > 0 ? (stats.approvalRate / stats.prpcCount) * 100 : 0;
     });
 
-    setCategoryStats(Array.from(categoryMap.values()).sort((a, b) => b.prpcCount - a.prpcCount));
+    const finalStats = Array.from(categoryMap.values()).sort((a, b) => b.prpcCount - a.prpcCount);
+    console.log("Category Stats:", finalStats);
+    setCategoryStats(finalStats);
   };
 
   let filteredInferences = inferences.filter((inf) =>
