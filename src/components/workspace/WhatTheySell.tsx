@@ -107,11 +107,11 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   };
 
   const fetchCategoryStats = async () => {
+    // Fetch aggregated PRPC counts directly from database
     const { data: prpcData, error: prpcError } = await supabase
       .from("prpc_inferences")
-      .select("*")
-      .eq("customer_id", customerId)
-      .limit(10000);
+      .select("inferred_product_category, confidence, status, needs_review")
+      .eq("customer_id", customerId);
 
     if (prpcError) {
       console.error("PRPC Error:", prpcError);
@@ -120,11 +120,11 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
 
     console.log("Total PRPCs fetched:", prpcData?.length);
 
+    // Fetch subscription coverage data
     const { data: subData, error: subError } = await supabase
       .from("subscription_coverage_candidates")
-      .select("subscription_id, covers_product_categories")
-      .eq("customer_id", customerId)
-      .limit(150000);
+      .select("covers_product_categories")
+      .eq("customer_id", customerId);
 
     if (subError) {
       console.error("Subscription Error:", subError);
@@ -135,6 +135,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
 
     const categoryMap = new Map<string, CategoryStats & { needsReview: number; lowConfidence: number }>();
 
+    // Count PRPCs by category
     prpcData?.forEach((prpc) => {
       const category = prpc.inferred_product_category || "Uncategorized";
       if (!categoryMap.has(category)) {
@@ -156,6 +157,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       if ((prpc.confidence || 0) < 0.5) stats.lowConfidence++;
     });
 
+    // Count subscriptions by category
     subData?.forEach((sub) => {
       sub.covers_product_categories?.forEach((cat: string) => {
         if (categoryMap.has(cat)) {
@@ -171,6 +173,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
 
     const finalStats = Array.from(categoryMap.values()).sort((a, b) => b.prpcCount - a.prpcCount);
     console.log("Category Stats:", finalStats);
+    console.log("Categories found:", finalStats.map(s => s.category));
     setCategoryStats(finalStats);
   };
 
