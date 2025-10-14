@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp } from "lucide-react";
+import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, DollarSign, BarChart3, Sparkles, Layers, Gift, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
 import { Progress } from "@/components/ui/progress";
@@ -236,7 +236,22 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   };
 
   const getCategoryIcon = (category: string) => {
-    return <Package className="h-6 w-6" />;
+    switch (category.toLowerCase()) {
+      case "recurring":
+        return <Repeat className="h-6 w-6 text-primary" />;
+      case "one-time":
+        return <DollarSign className="h-6 w-6 text-success" />;
+      case "usage-based":
+        return <BarChart3 className="h-6 w-6 text-accent" />;
+      case "hybrid":
+        return <Sparkles className="h-6 w-6 text-warning" />;
+      case "tiered":
+        return <Layers className="h-6 w-6 text-purple-500" />;
+      case "freemium":
+        return <Gift className="h-6 w-6 text-pink-500" />;
+      default:
+        return <Package className="h-6 w-6" />;
+    }
   };
 
   return (
@@ -244,7 +259,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">
-            PRPC-level product categorization and POB mapping with AI rationale
+            PRPC-level pricing model categorization and POB mapping with AI rationale
           </p>
           {selectedCategory && (
             <p className="text-xs text-muted-foreground mt-1">
@@ -276,7 +291,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-2xl font-bold">{categoryStats.length}</h3>
-                <p className="text-sm text-muted-foreground">Product Categories</p>
+<p className="text-sm text-muted-foreground">Pricing Models</p>
               </div>
               <TrendingUp className="h-8 w-8 text-primary" />
             </div>
@@ -318,7 +333,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                     {getCategoryIcon(stat.category)}
                     <div>
                       <h4 className="font-semibold text-lg">{stat.category}</h4>
-                      <p className="text-xs text-muted-foreground">Product Category</p>
+                      <p className="text-xs text-muted-foreground">Pricing Model</p>
                     </div>
                   </div>
                   <Badge variant="outline" className="text-xs">
@@ -364,7 +379,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
 
           {categoryStats.length === 0 && (
             <div className="py-12 text-center text-muted-foreground">
-              No product categories found
+              No pricing models found
             </div>
           )}
         </div>
@@ -374,7 +389,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search products, rate plans, categories..."
+                placeholder="Search products, rate plans, pricing models..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -402,7 +417,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                   <TableHead>Product</TableHead>
                   <TableHead>Rate Plan</TableHead>
                   <TableHead>Charge</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead>Pricing Model</TableHead>
                   <TableHead>POB</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Confidence</TableHead>
