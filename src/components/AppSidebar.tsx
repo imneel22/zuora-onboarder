@@ -23,11 +23,14 @@ const adminItems = [
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const params = useParams();
-  const customerId = params.customerId;
   const [customerName, setCustomerName] = useState<string>("");
 
   const isCustomerWorkspace = location.pathname.startsWith("/customer/");
+  
+  // Extract customerId from pathname instead of useParams
+  const customerId = isCustomerWorkspace 
+    ? location.pathname.split("/customer/")[1]?.split("?")[0]
+    : null;
 
   useEffect(() => {
     if (customerId) {
@@ -36,11 +39,12 @@ export function AppSidebar() {
   }, [customerId]);
 
   const fetchCustomerName = async () => {
+    if (!customerId) return;
     const { data } = await supabase
       .from("customers")
       .select("name")
       .eq("id", customerId)
-      .single();
+      .maybeSingle();
     
     if (data) {
       setCustomerName(data.name);
