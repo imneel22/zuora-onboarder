@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, Cloud, Cpu, Code, Sparkles, Layers, Gift } from "lucide-react";
+import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, Cloud, Cpu, Code, Sparkles, Layers, Gift, Users, Briefcase, HeadphonesIcon, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
 import { Progress } from "@/components/ui/progress";
@@ -245,6 +245,14 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
         return <Code className="h-6 w-6 text-accent" />;
       case "hybrid":
         return <Sparkles className="h-6 w-6 text-warning" />;
+      case "services":
+        return <Users className="h-6 w-6 text-blue-500" />;
+      case "consulting":
+        return <Briefcase className="h-6 w-6 text-indigo-500" />;
+      case "support":
+        return <HeadphonesIcon className="h-6 w-6 text-green-500" />;
+      case "training":
+        return <GraduationCap className="h-6 w-6 text-orange-500" />;
       case "tiered":
         return <Layers className="h-6 w-6 text-purple-500" />;
       case "freemium":
