@@ -267,14 +267,6 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
             <LayoutGrid className="h-4 w-4 mr-2" />
             Overview
           </Button>
-          <Button
-            variant={viewMode === "details" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("details")}
-          >
-            <List className="h-4 w-4 mr-2" />
-            Details
-          </Button>
         </div>
       </div>
 
