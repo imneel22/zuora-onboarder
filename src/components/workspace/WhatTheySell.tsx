@@ -56,7 +56,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedInference, setSelectedInference] = useState<PRPCInference | null>(null);
-  const [filterBy, setFilterBy] = useState<string>("all");
+  const [filterBy, setFilterBy] = useState<string>("low");
   const [userRole, setUserRole] = useState<string>("standard");
   const [viewMode, setViewMode] = useState<"overview" | "details">("overview");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -154,8 +154,15 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   }
 
   // Apply additional filters
-  if (filterBy === "low_confidence") {
-    filteredInferences = filteredInferences.filter(inf => (inf.confidence || 0) < 0.5);
+  if (filterBy === "low") {
+    filteredInferences = filteredInferences.filter(inf => (inf.confidence || 0) < 0.4);
+  } else if (filterBy === "medium") {
+    filteredInferences = filteredInferences.filter(inf => {
+      const conf = inf.confidence || 0;
+      return conf >= 0.4 && conf < 0.7;
+    });
+  } else if (filterBy === "high") {
+    filteredInferences = filteredInferences.filter(inf => (inf.confidence || 0) >= 0.7);
   } else if (filterBy === "conflicts") {
     filteredInferences = filteredInferences.filter(inf => inf.conflict_flags?.length > 0);
   } else if (filterBy === "needs_review") {
@@ -168,7 +175,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
     setSelectedCategory(category);
     setViewMode("details");
     setSearch("");
-    setFilterBy("all");
+    setFilterBy("low");
   };
 
   const handleBackToOverview = () => {
@@ -372,215 +379,79 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       </div>
     ) : (
         <>
-          {/* Confidence Buckets Tabs */}
-          <Tabs defaultValue="low" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="low" className="data-[state=active]:bg-destructive/20">
-                Low Confidence ({filteredInferences.filter(inf => (inf.confidence || 0) < 0.4).length})
-              </TabsTrigger>
-              <TabsTrigger value="medium" className="data-[state=active]:bg-warning/20">
-                Medium Confidence ({filteredInferences.filter(inf => {
-                  const conf = inf.confidence || 0;
-                  return conf >= 0.4 && conf < 0.7;
-                }).length})
-              </TabsTrigger>
-              <TabsTrigger value="high" className="data-[state=active]:bg-success/20">
-                High Confidence ({filteredInferences.filter(inf => (inf.confidence || 0) >= 0.7).length})
-              </TabsTrigger>
-            </TabsList>
+          {/* Confidence Filter */}
+          <div className="flex gap-2">
+            <Select value={filterBy} onValueChange={setFilterBy}>
+              <SelectTrigger className="w-[250px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter by confidence..." />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                <SelectItem value="low">Low Confidence (&lt; 40%)</SelectItem>
+                <SelectItem value="medium">Medium Confidence (40% - 69%)</SelectItem>
+                <SelectItem value="high">High Confidence (≥ 70%)</SelectItem>
+                <SelectItem value="all">All Confidence Levels</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            {/* Low Confidence Tab */}
-            <TabsContent value="low">
-              <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Rate Plan</TableHead>
-                      <TableHead>Charge</TableHead>
-                      <TableHead>POB</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Confidence</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInferences
-                      .filter(inf => (inf.confidence || 0) < 0.4)
-                      .map((inference) => (
-                        <TableRow
-                          key={inference.id}
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => setSelectedInference(inference)}
-                        >
-                          <TableCell className="font-medium">{inference.product_name}</TableCell>
-                          <TableCell>{inference.rate_plan_name}</TableCell>
-                          <TableCell>{inference.charge_name}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {inference.inferred_pob || "N/A"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={getStatusColor(inference.status)}>
-                              {inference.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedInference(inference);
-                              }}
-                            >
-                              View
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-                {filteredInferences.filter(inf => (inf.confidence || 0) < 0.4).length === 0 && (
-                  <div className="py-12 text-center text-muted-foreground">
-                    No low confidence PRPCs found
-                  </div>
-                )}
-              </Card>
-            </TabsContent>
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Rate Plan</TableHead>
+                  <TableHead>Charge</TableHead>
+                  <TableHead>POB</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Confidence</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredInferences.map((inference) => (
+                  <TableRow
+                    key={inference.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setSelectedInference(inference)}
+                  >
+                    <TableCell className="font-medium">{inference.product_name}</TableCell>
+                    <TableCell>{inference.rate_plan_name}</TableCell>
+                    <TableCell>{inference.charge_name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {inference.inferred_pob || "N/A"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getStatusColor(inference.status)}>
+                        {inference.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedInference(inference);
+                        }}
+                      >
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
 
-            {/* Medium Confidence Tab */}
-            <TabsContent value="medium">
-              <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Rate Plan</TableHead>
-                      <TableHead>Charge</TableHead>
-                      <TableHead>POB</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Confidence</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInferences
-                      .filter(inf => {
-                        const conf = inf.confidence || 0;
-                        return conf >= 0.4 && conf < 0.7;
-                      })
-                      .map((inference) => (
-                        <TableRow
-                          key={inference.id}
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => setSelectedInference(inference)}
-                        >
-                          <TableCell className="font-medium">{inference.product_name}</TableCell>
-                          <TableCell>{inference.rate_plan_name}</TableCell>
-                          <TableCell>{inference.charge_name}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {inference.inferred_pob || "N/A"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={getStatusColor(inference.status)}>
-                              {inference.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedInference(inference);
-                              }}
-                            >
-                              View
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-                {filteredInferences.filter(inf => {
-                  const conf = inf.confidence || 0;
-                  return conf >= 0.4 && conf < 0.7;
-                }).length === 0 && (
-                  <div className="py-12 text-center text-muted-foreground">
-                    No medium confidence PRPCs found
-                  </div>
-                )}
-              </Card>
-            </TabsContent>
-
-            {/* High Confidence Tab */}
-            <TabsContent value="high">
-              <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Rate Plan</TableHead>
-                      <TableHead>Charge</TableHead>
-                      <TableHead>POB</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Confidence</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInferences
-                      .filter(inf => (inf.confidence || 0) >= 0.7)
-                      .map((inference) => (
-                        <TableRow
-                          key={inference.id}
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => setSelectedInference(inference)}
-                        >
-                          <TableCell className="font-medium">{inference.product_name}</TableCell>
-                          <TableCell>{inference.rate_plan_name}</TableCell>
-                          <TableCell>{inference.charge_name}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {inference.inferred_pob || "N/A"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={getStatusColor(inference.status)}>
-                              {inference.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedInference(inference);
-                              }}
-                            >
-                              View
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-                {filteredInferences.filter(inf => (inf.confidence || 0) >= 0.7).length === 0 && (
-                  <div className="py-12 text-center text-muted-foreground">
-                    No high confidence PRPCs found
-                  </div>
-                )}
-              </Card>
-            </TabsContent>
-          </Tabs>
+          {filteredInferences.length === 0 && (
+            <div className="py-12 text-center text-muted-foreground">
+              No PRPC inferences found for selected filter
+            </div>
+          )}
         </>
       )}
 
