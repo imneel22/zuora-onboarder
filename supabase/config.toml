@@ -1,1 +1,4 @@
 project_id = "gavmupodgdotqqmaonyq"
+
+[functions.reclassify-prpc]
+verify_jwt = false

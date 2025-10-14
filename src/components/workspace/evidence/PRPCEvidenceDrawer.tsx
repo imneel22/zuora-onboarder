@@ -41,6 +41,10 @@ interface Props {
 export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRole }: Props) => {
   const [editMode, setEditMode] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStage, setProcessingStage] = useState<string>("");
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [xpEarned, setXpEarned] = useState(0);
 
   if (!inference) return null;
 
@@ -50,42 +54,46 @@ export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRol
       return;
     }
 
-    const { error } = await supabase
-      .from("prpc_inferences")
-      .update({
-        status: "needs_review",
-        last_reviewed_at: new Date().toISOString()
-      })
-      .eq("id", inference.id);
+    setIsProcessing(true);
+    setProcessingStage("Analyzing your feedback...");
 
-    if (error) {
-      toast.error("Failed to submit feedback");
-      return;
-    }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Simulate progress stages
+      setTimeout(() => setProcessingStage("Consulting AI expert..."), 1000);
+      setTimeout(() => setProcessingStage("Recalculating classification..."), 2000);
+      setTimeout(() => setProcessingStage("Finalizing results..."), 3000);
 
-    // Log audit
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from("audit_log").insert({
-        actor: user.id,
-        action: "feedback",
-        entity_type: "prpc",
-        entity_id: inference.id,
-        customer_id: inference.id,
-        before_json: {
-          status: inference.status
-        } as any,
-        after_json: { 
-          status: "needs_review",
-          feedback: feedback 
-        } as any
+      const { data, error } = await supabase.functions.invoke('reclassify-prpc', {
+        body: { 
+          inferenceId: inference.id,
+          feedback: feedback,
+          userId: user?.id
+        }
       });
-    }
 
-    toast.success("Feedback submitted");
-    setEditMode(false);
-    setFeedback("");
-    onUpdate();
+      if (error) {
+        throw error;
+      }
+
+      setXpEarned(data.xpEarned || 0);
+      setIsProcessing(false);
+      setShowCelebration(true);
+      
+      // Hide celebration after 3 seconds
+      setTimeout(() => {
+        setShowCelebration(false);
+        setEditMode(false);
+        setFeedback("");
+        onUpdate();
+      }, 3000);
+
+    } catch (error) {
+      console.error("Feedback error:", error);
+      setIsProcessing(false);
+      toast.error("Failed to process feedback");
+    }
   };
 
   const handleApprove = async () => {
@@ -176,7 +184,7 @@ export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRol
 
             {!editMode ? (
               <div className="space-y-2">
-                <Button onClick={() => setEditMode(true)} className="w-full">
+                <Button onClick={() => setEditMode(true)} className="w-full" disabled={isProcessing}>
                   Provide Feedback
                 </Button>
                 {userRole === "admin" && inference.status !== "approved" && (
@@ -186,6 +194,35 @@ export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRol
                   </Button>
                 )}
               </div>
+            ) : showCelebration ? (
+              <Card className="border-2 border-success bg-gradient-to-br from-success/20 to-success/5">
+                <CardContent className="pt-6 text-center space-y-4">
+                  <div className="text-6xl animate-bounce">🎉</div>
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-bold text-success">Classification Updated!</h3>
+                    <p className="text-lg font-semibold">+{xpEarned} XP Earned</p>
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle className="h-4 w-4 text-success" />
+                      <span>AI has re-analyzed based on your feedback</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : isProcessing ? (
+              <Card className="border-2 border-primary">
+                <CardContent className="pt-6 space-y-4">
+                  <div className="text-center space-y-3">
+                    <div className="animate-spin mx-auto h-12 w-12 rounded-full border-4 border-primary border-t-transparent"></div>
+                    <div className="space-y-1">
+                      <p className="font-semibold text-lg">{processingStage}</p>
+                      <p className="text-sm text-muted-foreground">This may take a moment...</p>
+                    </div>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <div className="h-full bg-primary animate-pulse rounded-full" style={{ width: '70%' }}></div>
+                  </div>
+                </CardContent>
+              </Card>
             ) : (
               <Card>
                 <CardContent className="pt-6 space-y-4">
@@ -199,8 +236,8 @@ export const PRPCEvidenceDrawer = ({ inference, open, onClose, onUpdate, userRol
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Button onClick={handleSubmitFeedback} className="flex-1">
-                      Submit Feedback
+                    <Button onClick={handleSubmitFeedback} className="flex-1" disabled={!feedback.trim()}>
+                      Submit & Re-run AI
                     </Button>
                     <Button onClick={() => setEditMode(false)} variant="outline">
                       Cancel
