@@ -355,7 +355,7 @@ export const WhatTheySell = ({
               <TableHeader>
                 <TableRow>
                   <TableHead>Product Rate Plan Charge</TableHead>
-                  <TableHead>Rate Plan</TableHead>
+                  <TableHead>Product Category</TableHead>
                   <TableHead>Charge</TableHead>
                   <TableHead>POB</TableHead>
                   <TableHead>Status</TableHead>
@@ -366,7 +366,11 @@ export const WhatTheySell = ({
               <TableBody>
                 {filteredInferences.map(inference => <TableRow key={inference.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedInference(inference)}>
                     <TableCell className="font-medium">{inference.product_name}</TableCell>
-                    <TableCell>{inference.rate_plan_name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {inference.inferred_product_category || "N/A"}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{inference.charge_name}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs">
