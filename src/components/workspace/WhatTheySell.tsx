@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -13,9 +14,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, CheckCircle, AlertTriangle, Filter } from "lucide-react";
+import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
+import { Progress } from "@/components/ui/progress";
 
 interface PRPCInference {
   id: string;
@@ -37,17 +39,28 @@ interface PRPCInference {
   last_reviewed_at: string | null;
 }
 
+interface CategoryStats {
+  category: string;
+  prpcCount: number;
+  subscriptionCount: number;
+  avgConfidence: number;
+  approvalRate: number;
+}
+
 export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   const [inferences, setInferences] = useState<PRPCInference[]>([]);
+  const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedInference, setSelectedInference] = useState<PRPCInference | null>(null);
   const [filterBy, setFilterBy] = useState<string>("all");
   const [userRole, setUserRole] = useState<string>("standard");
+  const [viewMode, setViewMode] = useState<"overview" | "details">("overview");
 
   useEffect(() => {
     fetchUserRole();
     fetchInferences();
+    fetchCategoryStats();
   }, [customerId]);
 
   const fetchUserRole = async () => {
@@ -77,6 +90,62 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       setInferences(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchCategoryStats = async () => {
+    const { data: prpcData, error: prpcError } = await supabase
+      .from("prpc_inferences")
+      .select("*")
+      .eq("customer_id", customerId);
+
+    if (prpcError) {
+      console.error(prpcError);
+      return;
+    }
+
+    const { data: subData, error: subError } = await supabase
+      .from("subscription_coverage_candidates")
+      .select("subscription_id, covers_product_categories")
+      .eq("customer_id", customerId);
+
+    if (subError) {
+      console.error(subError);
+      return;
+    }
+
+    const categoryMap = new Map<string, CategoryStats>();
+
+    prpcData?.forEach((prpc) => {
+      const category = prpc.inferred_product_category || "Uncategorized";
+      if (!categoryMap.has(category)) {
+        categoryMap.set(category, {
+          category,
+          prpcCount: 0,
+          subscriptionCount: 0,
+          avgConfidence: 0,
+          approvalRate: 0,
+        });
+      }
+      const stats = categoryMap.get(category)!;
+      stats.prpcCount++;
+      stats.avgConfidence += prpc.confidence || 0;
+      if (prpc.status === "approved") stats.approvalRate++;
+    });
+
+    subData?.forEach((sub) => {
+      sub.covers_product_categories?.forEach((cat: string) => {
+        if (categoryMap.has(cat)) {
+          categoryMap.get(cat)!.subscriptionCount++;
+        }
+      });
+    });
+
+    categoryMap.forEach((stats) => {
+      stats.avgConfidence = stats.prpcCount > 0 ? stats.avgConfidence / stats.prpcCount : 0;
+      stats.approvalRate = stats.prpcCount > 0 ? (stats.approvalRate / stats.prpcCount) * 100 : 0;
+    });
+
+    setCategoryStats(Array.from(categoryMap.values()).sort((a, b) => b.prpcCount - a.prpcCount));
   };
 
   let filteredInferences = inferences.filter((inf) =>
@@ -132,88 +201,210 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
     return <div className="text-center text-muted-foreground">Loading...</div>;
   }
 
+  const getCategoryColor = (index: number) => {
+    const colors = [
+      "from-primary/20 to-primary/5",
+      "from-accent/20 to-accent/5",
+      "from-success/20 to-success/5",
+      "from-warning/20 to-warning/5",
+    ];
+    return colors[index % colors.length];
+  };
+
+  const getCategoryIcon = (category: string) => {
+    return <Package className="h-6 w-6" />;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           PRPC-level product categorization and POB mapping with AI rationale
         </p>
-      </div>
-
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search products, rate plans, categories..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === "overview" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("overview")}
+          >
+            <LayoutGrid className="h-4 w-4 mr-2" />
+            Overview
+          </Button>
+          <Button
+            variant={viewMode === "details" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("details")}
+          >
+            <List className="h-4 w-4 mr-2" />
+            Details
+          </Button>
         </div>
-        <Select value={filterBy} onValueChange={setFilterBy}>
-          <SelectTrigger className="w-[200px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filter by..." />
-          </SelectTrigger>
-          <SelectContent className="bg-background z-50">
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="low_confidence">Low Confidence</SelectItem>
-            <SelectItem value="conflicts">Has Conflicts</SelectItem>
-            <SelectItem value="needs_review">Needs Review</SelectItem>
-            <SelectItem value="not_approved">Not Approved</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead>Rate Plan</TableHead>
-              <TableHead>Charge</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredInferences.map((inference) => (
-              <TableRow 
-                key={inference.id}
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => setSelectedInference(inference)}
+      {viewMode === "overview" ? (
+        <div className="space-y-4">
+          <Card className="p-6 bg-gradient-to-br from-primary/10 to-accent/10">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-2xl font-bold">{categoryStats.length}</h3>
+                <p className="text-sm text-muted-foreground">Product Categories</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-primary" />
+            </div>
+            <div className="grid grid-cols-3 gap-4 mt-4">
+              <div>
+                <p className="text-2xl font-bold text-accent">{inferences.length}</p>
+                <p className="text-xs text-muted-foreground">Total PRPCs</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-success">
+                  {categoryStats.reduce((sum, cat) => sum + cat.subscriptionCount, 0)}
+                </p>
+                <p className="text-xs text-muted-foreground">Subscriptions</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-primary">
+                  {categoryStats.length > 0
+                    ? Math.round(
+                        categoryStats.reduce((sum, cat) => sum + cat.avgConfidence, 0) /
+                          categoryStats.length *
+                          100
+                      )
+                    : 0}%
+                </p>
+                <p className="text-xs text-muted-foreground">Avg Confidence</p>
+              </div>
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {categoryStats.map((stat, index) => (
+              <Card
+                key={stat.category}
+                className={`p-6 bg-gradient-to-br ${getCategoryColor(index)} hover:shadow-lg transition-shadow cursor-pointer`}
               >
-                <TableCell className="font-medium">{inference.product_name}</TableCell>
-                <TableCell>{inference.rate_plan_name}</TableCell>
-                <TableCell>{inference.charge_name}</TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedInference(inference);
-                    }}
-                  >
-                    View
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    {getCategoryIcon(stat.category)}
+                    <div>
+                      <h4 className="font-semibold text-lg">{stat.category}</h4>
+                      <p className="text-xs text-muted-foreground">Product Category</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {Math.round(stat.approvalRate)}% Approved
+                  </Badge>
+                </div>
 
-      {filteredInferences.length === 0 && (
-        <div className="py-12 text-center text-muted-foreground">
-          No PRPC inferences found
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-background/50 rounded-lg p-3">
+                    <p className="text-2xl font-bold text-primary">{stat.prpcCount}</p>
+                    <p className="text-xs text-muted-foreground">PRPCs</p>
+                  </div>
+                  <div className="bg-background/50 rounded-lg p-3">
+                    <p className="text-2xl font-bold text-accent">{stat.subscriptionCount}</p>
+                    <p className="text-xs text-muted-foreground">Subscriptions</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Confidence Level</span>
+                    <span className="font-semibold">{Math.round(stat.avgConfidence * 100)}%</span>
+                  </div>
+                  <Progress value={stat.avgConfidence * 100} className="h-2" />
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {categoryStats.length === 0 && (
+            <div className="py-12 text-center text-muted-foreground">
+              No product categories found
+            </div>
+          )}
         </div>
+      ) : (
+        <>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search products, rate plans, categories..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={filterBy} onValueChange={setFilterBy}>
+              <SelectTrigger className="w-[200px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter by..." />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="low_confidence">Low Confidence</SelectItem>
+                <SelectItem value="conflicts">Has Conflicts</SelectItem>
+                <SelectItem value="needs_review">Needs Review</SelectItem>
+                <SelectItem value="not_approved">Not Approved</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Rate Plan</TableHead>
+                  <TableHead>Charge</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredInferences.map((inference) => (
+                  <TableRow
+                    key={inference.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setSelectedInference(inference)}
+                  >
+                    <TableCell className="font-medium">{inference.product_name}</TableCell>
+                    <TableCell>{inference.rate_plan_name}</TableCell>
+                    <TableCell>{inference.charge_name}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedInference(inference);
+                        }}
+                      >
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+
+          {filteredInferences.length === 0 && (
+            <div className="py-12 text-center text-muted-foreground">
+              No PRPC inferences found
+            </div>
+          )}
+        </>
       )}
 
       <PRPCEvidenceDrawer
         inference={selectedInference}
         open={!!selectedInference}
         onClose={() => setSelectedInference(null)}
-        onUpdate={fetchInferences}
+        onUpdate={() => {
+          fetchInferences();
+          fetchCategoryStats();
+        }}
         userRole={userRole}
       />
     </div>
