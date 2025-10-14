@@ -6,18 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, Cloud, Cpu, Code, Sparkles, Layers, Gift, Users, Briefcase, HeadphonesIcon, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
-
 interface PRPCInference {
   id: string;
   prpc_id: string;
@@ -37,7 +29,6 @@ interface PRPCInference {
   last_reviewed_by: string | null;
   last_reviewed_at: string | null;
 }
-
 interface CategoryStats {
   category: string;
   prpcCount: number;
@@ -49,8 +40,11 @@ interface CategoryStats {
   mediumConfidence?: number;
   highConfidence?: number;
 }
-
-export const WhatTheySell = ({ customerId }: { customerId: string }) => {
+export const WhatTheySell = ({
+  customerId
+}: {
+  customerId: string;
+}) => {
   const [inferences, setInferences] = useState<PRPCInference[]>([]);
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +54,6 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   const [userRole, setUserRole] = useState<string>("standard");
   const [viewMode, setViewMode] = useState<"overview" | "details">("overview");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
   useEffect(() => {
     console.log("Component mounted, customer ID:", customerId);
     fetchUserRole();
@@ -80,41 +73,37 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       fetchCategoryStats();
     }
   }, [viewMode]);
-
   useEffect(() => {
     console.log("Category stats updated:", categoryStats.length, "categories", categoryStats);
   }, [categoryStats]);
-
   const fetchUserRole = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: {
+        user
+      }
+    } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .single();
+      const {
+        data
+      } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
       if (data) setUserRole(data.role);
     }
   };
-
   const fetchInferences = async () => {
     setLoading(true);
-    
-    let query = supabase
-      .from("prpc_inferences")
-      .select("*")
-      .eq("customer_id", customerId);
-    
+    let query = supabase.from("prpc_inferences").select("*").eq("customer_id", customerId);
+
     // If viewing a specific category, filter in the query
     if (selectedCategory) {
       query = query.eq("inferred_product_category", selectedCategory);
     }
-    
-    const { data, error } = await query
-      .order("confidence", { ascending: true }) // Order by confidence to show low confidence first
-      .order("product_name")
-      .limit(10000);
-
+    const {
+      data,
+      error
+    } = await query.order("confidence", {
+      ascending: true
+    }) // Order by confidence to show low confidence first
+    .order("product_name").limit(10000);
     if (error) {
       toast.error("Failed to load inferences");
       console.error(error);
@@ -124,19 +113,19 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
     }
     setLoading(false);
   };
-
   const fetchCategoryStats = async () => {
     // Use database function for efficient aggregation
-    const { data, error } = await supabase
-      .rpc('get_category_stats', { p_customer_id: customerId });
-
+    const {
+      data,
+      error
+    } = await supabase.rpc('get_category_stats', {
+      p_customer_id: customerId
+    });
     if (error) {
       console.error("Category stats error:", error);
       return;
     }
-
     console.log("Category Stats from DB:", data);
-
     const stats = data?.map((row: any) => ({
       category: row.category,
       prpcCount: parseInt(row.prpc_count),
@@ -146,22 +135,13 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
       needsReview: parseInt(row.needs_review_count),
       lowConfidence: parseInt(row.low_confidence_count),
       mediumConfidence: parseInt(row.medium_confidence_count),
-      highConfidence: parseInt(row.high_confidence_count),
+      highConfidence: parseInt(row.high_confidence_count)
     })) || [];
-
     console.log("Processed stats:", stats);
     console.log("Categories found:", stats.map((s: any) => s.category));
     setCategoryStats(stats);
   };
-
-  let filteredInferences = inferences.filter((inf) =>
-    inf.product_name.toLowerCase().includes(search.toLowerCase()) ||
-    inf.rate_plan_name.toLowerCase().includes(search.toLowerCase()) ||
-    inf.charge_name.toLowerCase().includes(search.toLowerCase()) ||
-    inf.inferred_product_category?.toLowerCase().includes(search.toLowerCase()) ||
-    inf.inferred_pob?.toLowerCase().includes(search.toLowerCase())
-  );
-
+  let filteredInferences = inferences.filter(inf => inf.product_name.toLowerCase().includes(search.toLowerCase()) || inf.rate_plan_name.toLowerCase().includes(search.toLowerCase()) || inf.charge_name.toLowerCase().includes(search.toLowerCase()) || inf.inferred_product_category?.toLowerCase().includes(search.toLowerCase()) || inf.inferred_pob?.toLowerCase().includes(search.toLowerCase()));
   console.log("Total inferences:", inferences.length);
   console.log("After search filter:", filteredInferences.length);
   console.log("Selected category:", selectedCategory);
@@ -189,19 +169,16 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
   } else if (filterBy === "not_approved") {
     filteredInferences = filteredInferences.filter(inf => inf.status !== "approved");
   }
-
   const handleCategoryClick = (category: string) => {
     setSelectedCategory(category);
     setViewMode("details");
     setSearch("");
     setFilterBy("low");
   };
-
   const handleBackToOverview = () => {
     setSelectedCategory(null);
     setViewMode("overview");
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case "approved":
@@ -214,38 +191,25 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
         return "bg-muted text-muted-foreground";
     }
   };
-
   const getConfidenceBadge = (confidence: number | null) => {
     if (!confidence) return null;
-    
     const level = confidence >= 0.7 ? "high" : confidence >= 0.4 ? "medium" : "low";
     const colors = {
       high: "bg-success/10 text-success border-success/20",
       medium: "bg-warning/10 text-warning border-warning/20",
-      low: "bg-destructive/10 text-destructive border-destructive/20",
+      low: "bg-destructive/10 text-destructive border-destructive/20"
     };
-
-    return (
-      <Badge variant="outline" className={colors[level]}>
+    return <Badge variant="outline" className={colors[level]}>
         {Math.round(confidence * 100)}%
-      </Badge>
-    );
+      </Badge>;
   };
-
   if (loading) {
     return <div className="text-center text-muted-foreground">Loading...</div>;
   }
-
   const getCategoryColor = (index: number) => {
-    const colors = [
-      "from-primary/20 to-primary/5",
-      "from-accent/20 to-accent/5",
-      "from-success/20 to-success/5",
-      "from-warning/20 to-warning/5",
-    ];
+    const colors = ["from-primary/20 to-primary/5", "from-accent/20 to-accent/5", "from-success/20 to-success/5", "from-warning/20 to-warning/5"];
     return colors[index % colors.length];
   };
-
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
       case "saas":
@@ -272,22 +236,13 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
         return <Package className="h-6 w-6" />;
     }
   };
-
-  return (
-    <div className="space-y-4">
+  return <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
-          {selectedCategory && (
-            <Button variant="outline" size="sm" onClick={handleBackToOverview}>
+          {selectedCategory && <Button variant="outline" size="sm" onClick={handleBackToOverview}>
               Back to Overview
-            </Button>
-          )}
-          <Button
-            variant={viewMode === "overview" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("overview")}
-            disabled={!!selectedCategory}
-          >
+            </Button>}
+          <Button variant={viewMode === "overview" ? "default" : "outline"} size="sm" onClick={() => setViewMode("overview")} disabled={!!selectedCategory}>
             <LayoutGrid className="h-4 w-4 mr-2" />
             Overview
           </Button>
@@ -296,31 +251,24 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
           <p className="text-sm text-muted-foreground">
             PRPC-level product categorization and POB mapping with AI rationale
           </p>
-          {selectedCategory && (
-            <p className="text-xs text-muted-foreground mt-1">
+          {selectedCategory && <p className="text-xs text-muted-foreground mt-1">
               Viewing: <span className="font-semibold text-foreground">{selectedCategory}</span>
-            </p>
-          )}
+            </p>}
         </div>
       </div>
 
-      {viewMode === "overview" ? (
-      <div className="space-y-4">
+      {viewMode === "overview" ? <div className="space-y-4">
         <Card className="p-4 bg-gradient-to-br from-primary/20 to-accent/20 border-2 border-primary/30">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-3xl font-bold text-primary">{categoryStats.length}</h3>
               <p className="text-xs font-semibold text-muted-foreground">Product Categories</p>
             </div>
-            <Button 
-              size="sm" 
-              variant="outline"
-              onClick={() => {
-                console.log("Refreshing data...");
-                fetchCategoryStats();
-                fetchInferences();
-              }}
-            >
+            <Button size="sm" variant="outline" onClick={() => {
+            console.log("Refreshing data...");
+            fetchCategoryStats();
+            fetchInferences();
+          }}>
               Refresh Data
             </Button>
           </div>
@@ -339,13 +287,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categoryStats.length > 0 ? (
-            categoryStats.map((stat, index) => (
-              <Card
-                key={stat.category}
-                className={`p-6 bg-gradient-to-br ${getCategoryColor(index)} hover:shadow-lg transition-all cursor-pointer hover:scale-105`}
-                onClick={() => handleCategoryClick(stat.category)}
-              >
+          {categoryStats.length > 0 ? categoryStats.map((stat, index) => <Card key={stat.category} className={`p-6 bg-gradient-to-br ${getCategoryColor(index)} hover:shadow-lg transition-all cursor-pointer hover:scale-105`} onClick={() => handleCategoryClick(stat.category)}>
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     {getCategoryIcon(stat.category)}
@@ -387,17 +329,11 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                     Click to view details →
                   </p>
                 </div>
-              </Card>
-            ))
-          ) : (
-            <div className="col-span-3 text-center py-8 text-muted-foreground">
+              </Card>) : <div className="col-span-3 text-center py-8 text-muted-foreground">
               No categories found. Click "Refresh Data" to load.
-            </div>
-          )}
+            </div>}
         </div>
-      </div>
-    ) : (
-        <>
+      </div> : <>
           {/* Confidence Filter */}
           <div className="flex gap-2">
             <Select value={filterBy} onValueChange={setFilterBy}>
@@ -418,7 +354,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product</TableHead>
+                  <TableHead>Product Rate Plan Charge</TableHead>
                   <TableHead>Rate Plan</TableHead>
                   <TableHead>Charge</TableHead>
                   <TableHead>POB</TableHead>
@@ -428,12 +364,7 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredInferences.map((inference) => (
-                  <TableRow
-                    key={inference.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => setSelectedInference(inference)}
-                  >
+                {filteredInferences.map(inference => <TableRow key={inference.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedInference(inference)}>
                     <TableCell className="font-medium">{inference.product_name}</TableCell>
                     <TableCell>{inference.rate_plan_name}</TableCell>
                     <TableCell>{inference.charge_name}</TableCell>
@@ -449,38 +380,23 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
                     </TableCell>
                     <TableCell>{getConfidenceBadge(inference.confidence)}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedInference(inference);
-                        }}
-                      >
+                      <Button variant="ghost" size="sm" onClick={e => {
+                  e.stopPropagation();
+                  setSelectedInference(inference);
+                }}>
                         View
                       </Button>
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>)}
               </TableBody>
             </Table>
           </Card>
 
-          {filteredInferences.length === 0 && (
-            <div className="py-12 text-center text-muted-foreground">
+          {filteredInferences.length === 0 && <div className="py-12 text-center text-muted-foreground">
               No PRPC inferences found for selected filter
-            </div>
-          )}
-        </>
-      )}
+            </div>}
+        </>}
 
-      <PRPCEvidenceDrawer
-        inference={selectedInference}
-        open={!!selectedInference}
-        onClose={() => setSelectedInference(null)}
-        onUpdate={fetchInferences}
-        userRole={userRole}
-      />
-    </div>
-  );
+      <PRPCEvidenceDrawer inference={selectedInference} open={!!selectedInference} onClose={() => setSelectedInference(null)} onUpdate={fetchInferences} userRole={userRole} />
+    </div>;
 };
