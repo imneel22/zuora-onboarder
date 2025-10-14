@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, DollarSign, BarChart3, Sparkles, Layers, Gift, Repeat } from "lucide-react";
+import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, Cloud, Cpu, Code, Sparkles, Layers, Gift } from "lucide-react";
 import { toast } from "sonner";
 import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
 import { Progress } from "@/components/ui/progress";
@@ -237,12 +237,12 @@ export const WhatTheySell = ({ customerId }: { customerId: string }) => {
 
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
-      case "recurring":
-        return <Repeat className="h-6 w-6 text-primary" />;
-      case "one-time":
-        return <DollarSign className="h-6 w-6 text-success" />;
-      case "usage-based":
-        return <BarChart3 className="h-6 w-6 text-accent" />;
+      case "saas":
+        return <Cloud className="h-6 w-6 text-primary" />;
+      case "hardware":
+        return <Cpu className="h-6 w-6 text-success" />;
+      case "tech":
+        return <Code className="h-6 w-6 text-accent" />;
       case "hybrid":
         return <Sparkles className="h-6 w-6 text-warning" />;
       case "tiered":
