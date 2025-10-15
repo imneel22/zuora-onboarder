@@ -136,7 +136,6 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
             variant="outline" 
             className="relative group hover:scale-105 transition-all duration-300 border-2 border-primary/30 hover:border-primary shadow-lg hover:shadow-primary/20 bg-gradient-to-r from-primary/5 to-accent/5"
           >
-            <Sparkles className="h-4 w-4 mr-2 text-primary animate-pulse" />
             <span className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Configure LLM Fields
             </span>
