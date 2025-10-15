@@ -2,3 +2,6 @@ project_id = "gavmupodgdotqqmaonyq"
 
 [functions.reclassify-prpc]
 verify_jwt = false
+
+[functions.ai-categorization-feedback]
+verify_jwt = false

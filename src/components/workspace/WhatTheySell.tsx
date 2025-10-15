@@ -11,6 +11,7 @@ import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, 
 import { toast } from "sonner";
 import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
 import { CustomFieldConfig } from "./CustomFieldConfig";
+import { AICategoryAssistant } from "./AICategoryAssistant";
 interface PRPCInference {
   id: string;
   prpc_id: string;
@@ -252,6 +253,11 @@ export const WhatTheySell = ({
           {selectedCategory && <p className="text-xs text-muted-foreground">
               Viewing: <span className="font-semibold text-foreground">{selectedCategory}</span>
             </p>}
+          <AICategoryAssistant 
+            customerId={customerId} 
+            selectedCategory={selectedCategory}
+            onUpdate={fetchInferences}
+          />
           <CustomFieldConfig customerId={customerId} />
         </div>
       </div>
