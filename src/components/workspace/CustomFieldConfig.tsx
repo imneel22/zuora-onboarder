@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -32,6 +33,7 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
   const [fields, setFields] = useState<FieldConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [tableFilter, setTableFilter] = useState<string>("all");
 
   useEffect(() => {
     fetchFields();
@@ -271,6 +273,24 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
             </div>
           ) : (
             <div className="mt-4 space-y-4">
+              {/* Table Filter */}
+              {fields.length > 0 && (
+                <div className="flex items-center gap-3">
+                  <Label className="text-sm font-medium whitespace-nowrap">Filter by Table:</Label>
+                  <Select value={tableFilter} onValueChange={setTableFilter}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="All Tables" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Tables</SelectItem>
+                      <SelectItem value="configured">Configured</SelectItem>
+                      <SelectItem value="prpc_inferences">PRPC Inferences</SelectItem>
+                      <SelectItem value="subscriptions">Subscriptions</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
               {/* Field List */}
               {fields.length === 0 ? (
                 <Card className="p-8">
@@ -282,7 +302,9 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
                 </Card>
               ) : (
                 <div className="grid gap-3">
-                  {fields.map((field) => (
+                  {fields
+                    .filter(field => tableFilter === "all" || field.table_name === tableFilter)
+                    .map((field) => (
                     <Card
                       key={field.id}
                       className="p-4 hover:shadow-md transition-all"
