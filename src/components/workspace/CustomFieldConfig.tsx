@@ -71,6 +71,19 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
       'custom_attribute_2': ['Option 1', 'Option 2', 'Option 3']
     };
 
+    // Get record counts first
+    const { count: prpcCount } = await supabase
+      .from("prpc_inferences")
+      .select("*", { count: 'exact', head: true })
+      .eq("customer_id", customerId);
+
+    const { count: subscriptionCount } = await supabase
+      .from("subscriptions")
+      .select("*", { count: 'exact', head: true })
+      .eq("customer_id", customerId);
+
+    console.log('Record counts:', { prpcCount, subscriptionCount });
+
     // Add all configured fields first
     existingConfigs?.forEach(config => {
       const sampleValues = sampleValuesByField[config.field_name] || ['Sample 1', 'Sample 2', 'Sample 3'];
@@ -83,7 +96,8 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
         description: config.description,
         table_name: 'configured',
         distinct_values: sampleValues,
-        sample_count: sampleValues.length
+        sample_count: sampleValues.length,
+        record_count: 0 // Will be updated if found in actual tables
       });
     });
 
@@ -100,17 +114,6 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
       .select("*")
       .eq("customer_id", customerId)
       .limit(100);
-
-    // Get record counts
-    const { count: prpcCount } = await supabase
-      .from("prpc_inferences")
-      .select("*", { count: 'exact', head: true })
-      .eq("customer_id", customerId);
-
-    const { count: subscriptionCount } = await supabase
-      .from("subscriptions")
-      .select("*", { count: 'exact', head: true })
-      .eq("customer_id", customerId);
 
     // Analyze PRPC fields
     if (prpcData && prpcData.length > 0) {
@@ -139,7 +142,7 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
             table_name: 'prpc_inferences',
             distinct_values: distinctValues.slice(0, 10),
             sample_count: distinctValues.length,
-            record_count: prpcCount || 0
+            record_count: prpcCount ?? 0
           });
         } else {
           // Update the existing field with actual data
@@ -148,7 +151,7 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
             discoveredFields[idx].table_name = 'prpc_inferences';
             discoveredFields[idx].distinct_values = distinctValues.slice(0, 10);
             discoveredFields[idx].sample_count = distinctValues.length;
-            discoveredFields[idx].record_count = prpcCount || 0;
+            discoveredFields[idx].record_count = prpcCount ?? 0;
           }
         }
       }
@@ -181,7 +184,7 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
             table_name: 'subscriptions',
             distinct_values: distinctValues.slice(0, 10),
             sample_count: distinctValues.length,
-            record_count: subscriptionCount || 0
+            record_count: subscriptionCount ?? 0
           });
         } else {
           // Update the existing field with actual data
@@ -190,7 +193,7 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
             discoveredFields[idx].table_name = 'subscriptions';
             discoveredFields[idx].distinct_values = distinctValues.slice(0, 10);
             discoveredFields[idx].sample_count = distinctValues.length;
-            discoveredFields[idx].record_count = subscriptionCount || 0;
+            discoveredFields[idx].record_count = subscriptionCount ?? 0;
           }
         }
       }
