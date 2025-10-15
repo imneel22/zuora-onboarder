@@ -23,6 +23,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface UseCase {
   id: string;
@@ -43,8 +49,26 @@ interface UseCase {
   updated_at: string;
 }
 
+interface Scenario {
+  id: string;
+  use_case_id: string;
+  scenario_number: number;
+  scenario_name: string;
+  description: string | null;
+  triggering: string | null;
+  timing: string | null;
+  billing_impact: string | null;
+  revenue_recognition: string | null;
+  special_handling: string | null;
+  example: string | null;
+  metadata: any;
+  created_at: string;
+  updated_at: string;
+}
+
 export const UseCaseList = ({ customerId }: { customerId: string }) => {
   const [useCases, setUseCases] = useState<UseCase[]>([]);
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUseCase, setSelectedUseCase] = useState<UseCase | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -78,8 +102,23 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
     setUploadDialogOpen(true);
   };
 
-  const handleRowClick = (useCase: UseCase) => {
+  const handleRowClick = async (useCase: UseCase) => {
     setSelectedUseCase(useCase);
+    
+    // Fetch scenarios for this use case
+    const { data, error } = await supabase
+      .from("use_case_scenarios")
+      .select("*")
+      .eq("use_case_id", useCase.id)
+      .order("scenario_number", { ascending: true });
+
+    if (error) {
+      console.error("Failed to load scenarios:", error);
+      setScenarios([]);
+    } else {
+      setScenarios(data || []);
+    }
+    
     setDetailsDialogOpen(true);
   };
 
@@ -285,18 +324,18 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
 
       {/* Details Dialog */}
       <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedUseCase?.use_case_name}</DialogTitle>
+            <DialogTitle className="text-xl">{selectedUseCase?.use_case_name}</DialogTitle>
             <DialogDescription>
-              Complete details for this use case
+              Complete details and scenarios for this use case
             </DialogDescription>
           </DialogHeader>
           {selectedUseCase && (
             <div className="space-y-6 py-4">
               <div>
                 <h4 className="text-sm font-semibold mb-2">Category</h4>
-                <Badge variant="secondary">{selectedUseCase.category}</Badge>
+                <Badge variant="secondary" className="text-sm">{selectedUseCase.category}</Badge>
               </div>
               
               <div>
@@ -317,7 +356,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
                 </div>
                 <div>
                   <h4 className="text-sm font-semibold mb-2">Scenarios</h4>
-                  <p className="text-sm">{selectedUseCase.scenarios}</p>
+                  <p className="text-sm font-semibold text-primary">{scenarios.length}</p>
                 </div>
                 <div>
                   <h4 className="text-sm font-semibold mb-2">Status</h4>
@@ -358,6 +397,80 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
                       Download
                     </Button>
                   </div>
+                </div>
+              )}
+
+              {/* Scenarios Section */}
+              {scenarios.length > 0 && (
+                <div className="border-t pt-6">
+                  <h4 className="text-base font-semibold mb-4">Detailed Scenarios</h4>
+                  <Accordion type="single" collapsible className="w-full">
+                    {scenarios.map((scenario) => (
+                      <AccordionItem key={scenario.id} value={scenario.id}>
+                        <AccordionTrigger className="text-left">
+                          <div className="flex items-center gap-3">
+                            <Badge variant="outline" className="font-mono">
+                              #{scenario.scenario_number}
+                            </Badge>
+                            <span className="font-medium">{scenario.scenario_name}</span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-4 pt-2 pb-2">
+                            {scenario.description && (
+                              <div>
+                                <p className="text-sm font-medium text-muted-foreground mb-1">Description</p>
+                                <p className="text-sm leading-relaxed">{scenario.description}</p>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-4">
+                              {scenario.triggering && (
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground mb-1">Triggering</p>
+                                  <p className="text-sm">{scenario.triggering}</p>
+                                </div>
+                              )}
+                              {scenario.timing && (
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground mb-1">Timing</p>
+                                  <p className="text-sm">{scenario.timing}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {scenario.billing_impact && (
+                              <div>
+                                <p className="text-sm font-medium text-muted-foreground mb-1">Billing Impact</p>
+                                <p className="text-sm">{scenario.billing_impact}</p>
+                              </div>
+                            )}
+
+                            {scenario.revenue_recognition && (
+                              <div>
+                                <p className="text-sm font-medium text-muted-foreground mb-1">Revenue Recognition</p>
+                                <p className="text-sm">{scenario.revenue_recognition}</p>
+                              </div>
+                            )}
+
+                            {scenario.special_handling && (
+                              <div>
+                                <p className="text-sm font-medium text-muted-foreground mb-1">Special Handling</p>
+                                <p className="text-sm">{scenario.special_handling}</p>
+                              </div>
+                            )}
+
+                            {scenario.example && (
+                              <div className="bg-muted/50 p-3 rounded-md">
+                                <p className="text-sm font-medium text-muted-foreground mb-1">Example</p>
+                                <p className="text-sm font-mono">{scenario.example}</p>
+                              </div>
+                            )}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
                 </div>
               )}
             </div>

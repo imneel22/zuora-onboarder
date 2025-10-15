@@ -484,6 +484,65 @@ export type Database = {
           },
         ]
       }
+      use_case_scenarios: {
+        Row: {
+          billing_impact: string | null
+          created_at: string
+          description: string | null
+          example: string | null
+          id: string
+          metadata: Json | null
+          revenue_recognition: string | null
+          scenario_name: string
+          scenario_number: number
+          special_handling: string | null
+          timing: string | null
+          triggering: string | null
+          updated_at: string
+          use_case_id: string
+        }
+        Insert: {
+          billing_impact?: string | null
+          created_at?: string
+          description?: string | null
+          example?: string | null
+          id?: string
+          metadata?: Json | null
+          revenue_recognition?: string | null
+          scenario_name: string
+          scenario_number: number
+          special_handling?: string | null
+          timing?: string | null
+          triggering?: string | null
+          updated_at?: string
+          use_case_id: string
+        }
+        Update: {
+          billing_impact?: string | null
+          created_at?: string
+          description?: string | null
+          example?: string | null
+          id?: string
+          metadata?: Json | null
+          revenue_recognition?: string | null
+          scenario_name?: string
+          scenario_number?: number
+          special_handling?: string | null
+          timing?: string | null
+          triggering?: string | null
+          updated_at?: string
+          use_case_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "use_case_scenarios_use_case_id_fkey"
+            columns: ["use_case_id"]
+            isOneToOne: false
+            referencedRelation: "use_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       use_cases: {
         Row: {
           category: string
