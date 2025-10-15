@@ -3,19 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Plus, X, Save, Sparkles } from "lucide-react";
+import { Settings, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
@@ -24,6 +14,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
 
 interface FieldConfig {
   id: string;
@@ -32,19 +23,15 @@ interface FieldConfig {
   field_type: string;
   include_in_llm: boolean;
   description: string | null;
+  table_name?: string;
+  distinct_values?: string[];
+  sample_count?: number;
 }
 
 export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
   const [fields, setFields] = useState<FieldConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [newField, setNewField] = useState({
-    field_name: "",
-    field_label: "",
-    field_type: "text",
-    description: "",
-  });
 
   useEffect(() => {
     fetchFields();
@@ -52,79 +39,144 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
 
   const fetchFields = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    
+    // First, get existing field configurations
+    const { data: existingConfigs } = await supabase
       .from("customer_field_config")
       .select("*")
-      .eq("customer_id", customerId)
-      .order("field_label");
+      .eq("customer_id", customerId);
 
-    if (error) {
-      toast.error("Failed to load field configurations");
-      console.error(error);
-    } else {
-      setFields(data || []);
+    const configMap = new Map(existingConfigs?.map(c => [c.field_name, c]) || []);
+
+    // Discover fields from prpc_inferences table
+    const { data: prpcData } = await supabase
+      .from("prpc_inferences")
+      .select("*")
+      .eq("customer_id", customerId)
+      .limit(100);
+
+    // Discover fields from subscriptions table  
+    const { data: subscriptionData } = await supabase
+      .from("subscriptions")
+      .select("*")
+      .eq("customer_id", customerId)
+      .limit(100);
+
+    const discoveredFields: FieldConfig[] = [];
+
+    // Analyze PRPC fields
+    if (prpcData && prpcData.length > 0) {
+      const sampleRow = prpcData[0];
+      const customFieldKeys = Object.keys(sampleRow).filter(
+        key => !['id', 'customer_id', 'prpc_id', 'product_name', 'rate_plan_name', 
+                 'charge_name', 'inferred_product_category', 'inferred_pob', 
+                 'confidence', 'status', 'rationale', 'created_at', 'updated_at',
+                 'source_agent', 'evidence_refs', 'explanation_vector', 'conflict_flags',
+                 'needs_review', 'last_reviewed_by', 'last_reviewed_at'].includes(key)
+      );
+
+      for (const fieldKey of customFieldKeys) {
+        const distinctValues = [...new Set(prpcData.map(row => row[fieldKey]).filter(Boolean))];
+        const existingConfig = configMap.get(fieldKey);
+
+        discoveredFields.push({
+          id: existingConfig?.id || `prpc_${fieldKey}`,
+          field_name: fieldKey,
+          field_label: existingConfig?.field_label || fieldKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+          field_type: typeof sampleRow[fieldKey],
+          include_in_llm: existingConfig?.include_in_llm ?? false,
+          description: existingConfig?.description || null,
+          table_name: 'prpc_inferences',
+          distinct_values: distinctValues.slice(0, 10),
+          sample_count: distinctValues.length
+        });
+      }
     }
+
+    // Analyze Subscription fields
+    if (subscriptionData && subscriptionData.length > 0) {
+      const sampleRow = subscriptionData[0];
+      const customFieldKeys = Object.keys(sampleRow).filter(
+        key => !['id', 'customer_id', 'subscription_id', 'status', 'confidence',
+                 'created_at', 'updated_at', 'start_date', 'end_date', 'currency',
+                 'billing_period', 'termed', 'evergreen', 'has_ramps', 'has_discounts',
+                 'has_cancellation', 'audited', 'audited_at', 'audited_by',
+                 'sot_snapshot_hash', 'derivation_trace', 'conflict_flags'].includes(key)
+      );
+
+      for (const fieldKey of customFieldKeys) {
+        const distinctValues = [...new Set(subscriptionData.map(row => row[fieldKey]).filter(Boolean))];
+        const existingConfig = configMap.get(fieldKey);
+
+        // Skip if already added from prpc_inferences
+        if (!discoveredFields.find(f => f.field_name === fieldKey)) {
+          discoveredFields.push({
+            id: existingConfig?.id || `sub_${fieldKey}`,
+            field_name: fieldKey,
+            field_label: existingConfig?.field_label || fieldKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+            field_type: typeof sampleRow[fieldKey],
+            include_in_llm: existingConfig?.include_in_llm ?? false,
+            description: existingConfig?.description || null,
+            table_name: 'subscriptions',
+            distinct_values: distinctValues.slice(0, 10),
+            sample_count: distinctValues.length
+          });
+        }
+      }
+    }
+
+    setFields(discoveredFields);
     setLoading(false);
   };
 
-  const toggleField = async (fieldId: string, currentValue: boolean) => {
-    const { error } = await supabase
-      .from("customer_field_config")
-      .update({ include_in_llm: !currentValue })
-      .eq("id", fieldId);
+  const toggleField = async (field: FieldConfig) => {
+    const newValue = !field.include_in_llm;
+    
+    // Check if config exists in database
+    if (field.id.startsWith('prpc_') || field.id.startsWith('sub_')) {
+      // Create new config
+      const { data, error } = await supabase
+        .from("customer_field_config")
+        .insert({
+          customer_id: customerId,
+          field_name: field.field_name,
+          field_label: field.field_label,
+          field_type: field.field_type,
+          include_in_llm: newValue,
+        })
+        .select()
+        .single();
 
-    if (error) {
-      toast.error("Failed to update field");
-      console.error(error);
-    } else {
-      toast.success("Field configuration updated");
-      fetchFields();
-    }
-  };
-
-  const addField = async () => {
-    if (!newField.field_name || !newField.field_label) {
-      toast.error("Field name and label are required");
-      return;
-    }
-
-    const { error } = await supabase.from("customer_field_config").insert({
-      customer_id: customerId,
-      field_name: newField.field_name,
-      field_label: newField.field_label,
-      field_type: newField.field_type,
-      description: newField.description || null,
-      include_in_llm: true,
-    });
-
-    if (error) {
-      if (error.code === "23505") {
-        toast.error("A field with this name already exists");
-      } else {
-        toast.error("Failed to add field");
+      if (error) {
+        if (error.code === "23505") {
+          // Already exists, update instead
+          await supabase
+            .from("customer_field_config")
+            .update({ include_in_llm: newValue })
+            .eq("customer_id", customerId)
+            .eq("field_name", field.field_name);
+        } else {
+          toast.error("Failed to update field");
+          console.error(error);
+          return;
+        }
       }
-      console.error(error);
     } else {
-      toast.success("Field added successfully");
-      setNewField({ field_name: "", field_label: "", field_type: "text", description: "" });
-      setDialogOpen(false);
-      fetchFields();
-    }
-  };
+      // Update existing config
+      const { error } = await supabase
+        .from("customer_field_config")
+        .update({ include_in_llm: newValue })
+        .eq("id", field.id);
 
-  const deleteField = async (fieldId: string) => {
-    const { error } = await supabase
-      .from("customer_field_config")
-      .delete()
-      .eq("id", fieldId);
-
-    if (error) {
-      toast.error("Failed to delete field");
-      console.error(error);
-    } else {
-      toast.success("Field deleted successfully");
-      fetchFields();
+      if (error) {
+        toast.error("Failed to update field");
+        console.error(error);
+        return;
+      }
     }
+
+    toast.success(newValue ? "Field included in LLM" : "Field excluded from LLM");
+    fetchFields();
   };
 
   return (
@@ -149,90 +201,30 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
             )}
           </Button>
         </SheetTrigger>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5 text-primary" />
               Custom Fields for LLM
             </SheetTitle>
             <SheetDescription>
-              Configure which custom fields should be included in LLM processing
+              Select which custom fields from your data should be included in LLM processing
             </SheetDescription>
           </SheetHeader>
 
           {loading ? (
             <div className="text-sm text-muted-foreground py-8 text-center">
-              Loading field configuration...
+              Discovering custom fields...
             </div>
           ) : (
             <div className="mt-6 space-y-4">
-              {/* Add Field Button */}
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="outline" className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add New Field
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Custom Field</DialogTitle>
-                    <DialogDescription>
-                      Configure a custom field that can be included in LLM processing
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="field_name">Field Name (Database Key)</Label>
-                      <Input
-                        id="field_name"
-                        placeholder="e.g., custom_attribute_1"
-                        value={newField.field_name}
-                        onChange={(e) => setNewField({ ...newField, field_name: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="field_label">Field Label (Display Name)</Label>
-                      <Input
-                        id="field_label"
-                        placeholder="e.g., Custom Attribute"
-                        value={newField.field_label}
-                        onChange={(e) => setNewField({ ...newField, field_label: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="field_type">Field Type</Label>
-                      <Input
-                        id="field_type"
-                        placeholder="e.g., text, number, boolean"
-                        value={newField.field_type}
-                        onChange={(e) => setNewField({ ...newField, field_type: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="description">Description (Optional)</Label>
-                      <Input
-                        id="description"
-                        placeholder="Brief description of this field"
-                        value={newField.description}
-                        onChange={(e) => setNewField({ ...newField, description: e.target.value })}
-                      />
-                    </div>
-                    <Button onClick={addField} className="w-full">
-                      <Save className="h-4 w-4 mr-2" />
-                      Add Field
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
               {/* Field List */}
               {fields.length === 0 ? (
                 <Card className="p-6">
                   <div className="text-center text-muted-foreground">
                     <Sparkles className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                    <p className="text-sm font-medium">No custom fields configured</p>
-                    <p className="text-xs mt-1">Add fields to include them in LLM processing</p>
+                    <p className="text-sm font-medium">No custom fields discovered</p>
+                    <p className="text-xs mt-1">Custom fields will appear here when data is available</p>
                   </div>
                 </Card>
               ) : (
@@ -240,43 +232,60 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
                   {fields.map((field) => (
                     <Card
                       key={field.id}
-                      className="p-3 hover:shadow-md transition-all"
+                      className="p-4 hover:shadow-md transition-all"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-sm">{field.field_label}</p>
-                            <Badge variant="outline" className="text-xs">
-                              {field.field_type}
-                            </Badge>
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-2">
+                              <p className="font-semibold text-base">{field.field_label}</p>
+                              <Badge variant="outline" className="text-xs">
+                                {field.field_type}
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs">
+                                {field.table_name}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Field: <code className="text-xs bg-muted px-1 py-0.5 rounded">{field.field_name}</code>
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1 truncate">
-                            Key: <code className="text-xs bg-muted px-1 py-0.5 rounded">{field.field_name}</code>
-                          </p>
-                          {field.description && (
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{field.description}</p>
-                          )}
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
                           <div className="flex items-center gap-2">
-                            <Label htmlFor={`toggle-${field.id}`} className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
+                            <Label htmlFor={`toggle-${field.id}`} className="text-xs font-medium cursor-pointer whitespace-nowrap">
                               {field.include_in_llm ? "Included" : "Excluded"}
                             </Label>
                             <Switch
                               id={`toggle-${field.id}`}
                               checked={field.include_in_llm}
-                              onCheckedChange={() => toggleField(field.id, field.include_in_llm)}
+                              onCheckedChange={() => toggleField(field)}
                             />
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteField(field.id)}
-                            className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
                         </div>
+
+                        {/* Distinct Values Preview */}
+                        {field.distinct_values && field.distinct_values.length > 0 && (
+                          <div className="border-t pt-3">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">
+                              Sample Values ({field.sample_count} unique):
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {field.distinct_values.slice(0, 8).map((value, idx) => (
+                                <Badge 
+                                  key={idx} 
+                                  variant="outline" 
+                                  className="text-xs font-normal max-w-[200px] truncate"
+                                >
+                                  {String(value)}
+                                </Badge>
+                              ))}
+                              {field.sample_count! > 8 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{field.sample_count! - 8} more
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </Card>
                   ))}
@@ -284,14 +293,16 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
               )}
 
               {/* Summary */}
-              <Card className="p-3 bg-muted/50">
-                <p className="text-xs text-muted-foreground">
-                  <strong>Included fields:</strong> {fields.filter(f => f.include_in_llm).length} / {fields.length}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Only enabled fields will be sent to the LLM for inference processing
-                </p>
-              </Card>
+              {fields.length > 0 && (
+                <Card className="p-3 bg-muted/50">
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Included fields:</strong> {fields.filter(f => f.include_in_llm).length} / {fields.length}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Only enabled fields will be sent to the LLM for inference processing
+                  </p>
+                </Card>
+              )}
             </div>
           )}
         </SheetContent>
