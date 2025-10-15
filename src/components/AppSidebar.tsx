@@ -58,8 +58,6 @@ export function AppSidebar() {
     { title: "What They Sell", tab: "what-they-sell", icon: Package },
     { title: "How They Sell", tab: "how-they-sell", icon: ShoppingCart },
     { title: "Use Cases", tab: "use-cases", icon: CheckSquare },
-    { title: "Coverage Set", tab: "coverage", icon: Shield },
-    { title: "Audit Trail", tab: "audit", icon: FileText },
   ] : [];
 
   return (
