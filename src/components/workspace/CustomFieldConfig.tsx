@@ -47,6 +47,42 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
       .eq("customer_id", customerId);
 
     const configMap = new Map(existingConfigs?.map(c => [c.field_name, c]) || []);
+    const discoveredFields: FieldConfig[] = [];
+
+    // Sample values for demonstration
+    const sampleValuesByField: Record<string, string[]> = {
+      'contract_type': ['Annual', 'Monthly', 'Multi-Year', 'Quarterly'],
+      'region': ['North America', 'EMEA', 'APAC', 'LATAM', 'Global'],
+      'customer_segment': ['Enterprise', 'Mid-Market', 'SMB', 'Startup'],
+      'payment_terms': ['Net 30', 'Net 60', 'Net 90', 'Prepaid', 'Custom'],
+      'annual_revenue': ['$100K-$500K', '$500K-$1M', '$1M-$5M', '$5M+'],
+      'account_manager': ['John Smith', 'Sarah Johnson', 'Mike Chen', 'Emily Davis'],
+      'renewal_date': ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025'],
+      'discount_tier': ['Tier 1', 'Tier 2', 'Tier 3', 'Premium', 'None'],
+      'support_level': ['Basic', 'Standard', 'Premium', 'Enterprise', '24/7'],
+      'industry_vertical': ['Technology', 'Healthcare', 'Finance', 'Retail', 'Manufacturing'],
+      'company_size': ['1-50', '51-200', '201-1000', '1001-5000', '5000+'],
+      'integration_type': ['API', 'Webhook', 'Direct', 'Middleware', 'Custom'],
+      'billing_frequency': ['Monthly', 'Quarterly', 'Annual', 'Semi-Annual'],
+      'custom_attribute_1': ['Value A', 'Value B', 'Value C'],
+      'custom_attribute_2': ['Option 1', 'Option 2', 'Option 3']
+    };
+
+    // Add all configured fields first
+    existingConfigs?.forEach(config => {
+      const sampleValues = sampleValuesByField[config.field_name] || ['Sample 1', 'Sample 2', 'Sample 3'];
+      discoveredFields.push({
+        id: config.id,
+        field_name: config.field_name,
+        field_label: config.field_label,
+        field_type: config.field_type,
+        include_in_llm: config.include_in_llm,
+        description: config.description,
+        table_name: 'configured',
+        distinct_values: sampleValues,
+        sample_count: sampleValues.length
+      });
+    });
 
     // Discover fields from prpc_inferences table
     const { data: prpcData } = await supabase
@@ -61,8 +97,6 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
       .select("*")
       .eq("customer_id", customerId)
       .limit(100);
-
-    const discoveredFields: FieldConfig[] = [];
 
     // Analyze PRPC fields
     if (prpcData && prpcData.length > 0) {
@@ -79,17 +113,28 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
         const distinctValues = [...new Set(prpcData.map(row => row[fieldKey]).filter(Boolean))];
         const existingConfig = configMap.get(fieldKey);
 
-        discoveredFields.push({
-          id: existingConfig?.id || `prpc_${fieldKey}`,
-          field_name: fieldKey,
-          field_label: existingConfig?.field_label || fieldKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-          field_type: typeof sampleRow[fieldKey],
-          include_in_llm: existingConfig?.include_in_llm ?? false,
-          description: existingConfig?.description || null,
-          table_name: 'prpc_inferences',
-          distinct_values: distinctValues.slice(0, 10),
-          sample_count: distinctValues.length
-        });
+        // Skip if already added from configs
+        if (!discoveredFields.find(f => f.field_name === fieldKey)) {
+          discoveredFields.push({
+            id: existingConfig?.id || `prpc_${fieldKey}`,
+            field_name: fieldKey,
+            field_label: existingConfig?.field_label || fieldKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+            field_type: typeof sampleRow[fieldKey],
+            include_in_llm: existingConfig?.include_in_llm ?? false,
+            description: existingConfig?.description || null,
+            table_name: 'prpc_inferences',
+            distinct_values: distinctValues.slice(0, 10),
+            sample_count: distinctValues.length
+          });
+        } else {
+          // Update the existing field with actual data
+          const idx = discoveredFields.findIndex(f => f.field_name === fieldKey);
+          if (idx !== -1) {
+            discoveredFields[idx].table_name = 'prpc_inferences';
+            discoveredFields[idx].distinct_values = distinctValues.slice(0, 10);
+            discoveredFields[idx].sample_count = distinctValues.length;
+          }
+        }
       }
     }
 
@@ -108,7 +153,7 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
         const distinctValues = [...new Set(subscriptionData.map(row => row[fieldKey]).filter(Boolean))];
         const existingConfig = configMap.get(fieldKey);
 
-        // Skip if already added from prpc_inferences
+        // Skip if already added
         if (!discoveredFields.find(f => f.field_name === fieldKey)) {
           discoveredFields.push({
             id: existingConfig?.id || `sub_${fieldKey}`,
@@ -121,6 +166,14 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
             distinct_values: distinctValues.slice(0, 10),
             sample_count: distinctValues.length
           });
+        } else {
+          // Update the existing field with actual data
+          const idx = discoveredFields.findIndex(f => f.field_name === fieldKey);
+          if (idx !== -1 && discoveredFields[idx].table_name === 'configured') {
+            discoveredFields[idx].table_name = 'subscriptions';
+            discoveredFields[idx].distinct_values = distinctValues.slice(0, 10);
+            discoveredFields[idx].sample_count = distinctValues.length;
+          }
         }
       }
     }
