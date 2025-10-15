@@ -65,6 +65,50 @@ export type Database = {
           },
         ]
       }
+      customer_field_config: {
+        Row: {
+          created_at: string
+          customer_id: string
+          description: string | null
+          field_label: string
+          field_name: string
+          field_type: string
+          id: string
+          include_in_llm: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          description?: string | null
+          field_label: string
+          field_name: string
+          field_type?: string
+          id?: string
+          include_in_llm?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          description?: string | null
+          field_label?: string
+          field_name?: string
+          field_type?: string
+          id?: string
+          include_in_llm?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_field_config_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           assigned_user_ids: string[]

@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, Cloud, Cpu, Code, Sparkles, Layers, Gift, Users, Briefcase, HeadphonesIcon, GraduationCap, Info } from "lucide-react";
 import { toast } from "sonner";
 import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
+import { CustomFieldConfig } from "./CustomFieldConfig";
 interface PRPCInference {
   id: string;
   prpc_id: string;
@@ -253,6 +254,9 @@ export const WhatTheySell = ({
             </p>}
         </div>
       </div>
+
+      {/* Custom Field Configuration */}
+      <CustomFieldConfig customerId={customerId} />
 
       {viewMode === "overview" ? <div className="space-y-4">
         <Card className="p-4 bg-gradient-to-br from-primary/20 to-accent/20 border-2 border-primary/30">
