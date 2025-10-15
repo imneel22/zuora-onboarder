@@ -227,18 +227,6 @@ export const HowTheySell = ({ customerId }: { customerId: string }) => {
                 <p className="text-xs font-semibold text-muted-foreground">Total Subscriptions</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-background/80 rounded-md p-2">
-                <p className="text-xl font-bold text-accent">{Object.keys(currencyGroups).length}</p>
-                <p className="text-xs text-muted-foreground">Currencies</p>
-              </div>
-              <div className="bg-background/80 rounded-md p-2">
-                <p className="text-xl font-bold text-success">
-                  {Object.keys(termLengthGroups).length}
-                </p>
-                <p className="text-xs text-muted-foreground">Term Lengths</p>
-              </div>
-            </div>
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
