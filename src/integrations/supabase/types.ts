@@ -553,6 +553,7 @@ export type Database = {
           has_waterfall: boolean
           id: string
           metadata: Json | null
+          product_categories: string[] | null
           scenarios: number | null
           status: string
           timing: string | null
@@ -571,6 +572,7 @@ export type Database = {
           has_waterfall?: boolean
           id?: string
           metadata?: Json | null
+          product_categories?: string[] | null
           scenarios?: number | null
           status?: string
           timing?: string | null
@@ -589,6 +591,7 @@ export type Database = {
           has_waterfall?: boolean
           id?: string
           metadata?: Json | null
+          product_categories?: string[] | null
           scenarios?: number | null
           status?: string
           timing?: string | null

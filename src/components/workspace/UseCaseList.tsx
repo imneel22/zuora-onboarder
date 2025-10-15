@@ -36,6 +36,7 @@ interface UseCase {
   use_case_name: string;
   description: string | null;
   category: string;
+  product_categories: string[];
   triggering: string | null;
   timing: string | null;
   has_waterfall: boolean;
@@ -205,6 +206,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Use Case</TableHead>
+                  <TableHead>Product Categories</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead className="w-[100px]">Scenarios</TableHead>
@@ -215,19 +217,32 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
               <TableBody>
                 {useCases.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No use cases found for this customer.
                     </TableCell>
                   </TableRow>
                 ) : (
                   useCases.map((useCase) => (
-                    <TableRow 
+                    <TableRow
                       key={useCase.id}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleRowClick(useCase)}
                     >
                       <TableCell className="font-medium">
                         {useCase.use_case_name}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {useCase.product_categories && useCase.product_categories.length > 0 ? (
+                            useCase.product_categories.map((category, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {category}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">{useCase.category}</Badge>
