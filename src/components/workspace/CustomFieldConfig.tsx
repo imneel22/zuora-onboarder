@@ -7,13 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Settings, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
 interface FieldConfig {
@@ -31,7 +31,7 @@ interface FieldConfig {
 export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
   const [fields, setFields] = useState<FieldConfig[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchFields();
@@ -182,8 +182,8 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
   return (
     <>
       {/* Compact Eye-Catching Button */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetTrigger asChild>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogTrigger asChild>
           <Button 
             variant="outline" 
             className="relative group hover:scale-105 transition-all duration-300 border-2 border-primary/30 hover:border-primary shadow-lg hover:shadow-primary/20 bg-gradient-to-r from-primary/5 to-accent/5"
@@ -200,59 +200,68 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
               </Badge>
             )}
           </Button>
-        </SheetTrigger>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
+        </DialogTrigger>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5 text-primary" />
-              Custom Fields for LLM
-            </SheetTitle>
-            <SheetDescription>
+              Custom Fields for LLM Input
+            </DialogTitle>
+            <DialogDescription>
               Select which custom fields from your data should be included in LLM processing
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
 
           {loading ? (
             <div className="text-sm text-muted-foreground py-8 text-center">
               Discovering custom fields...
             </div>
           ) : (
-            <div className="mt-6 space-y-4">
+            <div className="mt-4 space-y-4">
               {/* Field List */}
               {fields.length === 0 ? (
-                <Card className="p-6">
+                <Card className="p-8">
                   <div className="text-center text-muted-foreground">
-                    <Sparkles className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                    <p className="text-sm font-medium">No custom fields discovered</p>
-                    <p className="text-xs mt-1">Custom fields will appear here when data is available</p>
+                    <Sparkles className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+                    <p className="text-base font-medium">No custom fields discovered</p>
+                    <p className="text-sm mt-2">Custom fields will appear here when data is available in your tables</p>
                   </div>
                 </Card>
               ) : (
-                <div className="space-y-3">
+                <div className="grid gap-3">
                   {fields.map((field) => (
                     <Card
                       key={field.id}
                       className="p-4 hover:shadow-md transition-all"
                     >
                       <div className="space-y-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0 space-y-2">
+                            {/* Header */}
+                            <div className="flex items-center gap-2 flex-wrap">
                               <p className="font-semibold text-base">{field.field_label}</p>
                               <Badge variant="outline" className="text-xs">
                                 {field.field_type}
                               </Badge>
                               <Badge variant="secondary" className="text-xs">
-                                {field.table_name}
+                                Table: {field.table_name}
                               </Badge>
                             </div>
+                            
+                            {/* Field Name */}
                             <p className="text-xs text-muted-foreground">
-                              Field: <code className="text-xs bg-muted px-1 py-0.5 rounded">{field.field_name}</code>
+                              Field Name: <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{field.field_name}</code>
                             </p>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Label htmlFor={`toggle-${field.id}`} className="text-xs font-medium cursor-pointer whitespace-nowrap">
-                              {field.include_in_llm ? "Included" : "Excluded"}
+                          
+                          {/* Toggle */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <Label htmlFor={`toggle-${field.id}`} className="text-sm font-medium cursor-pointer whitespace-nowrap">
+                              {field.include_in_llm ? (
+                                <span className="text-success">✓ Included</span>
+                              ) : (
+                                <span className="text-muted-foreground">Excluded</span>
+                              )}
                             </Label>
                             <Switch
                               id={`toggle-${field.id}`}
@@ -265,22 +274,22 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
                         {/* Distinct Values Preview */}
                         {field.distinct_values && field.distinct_values.length > 0 && (
                           <div className="border-t pt-3">
-                            <p className="text-xs font-medium text-muted-foreground mb-2">
-                              Sample Values ({field.sample_count} unique):
+                            <p className="text-xs font-semibold text-muted-foreground mb-2">
+                              Field Values ({field.sample_count} unique):
                             </p>
                             <div className="flex flex-wrap gap-1.5">
-                              {field.distinct_values.slice(0, 8).map((value, idx) => (
+                              {field.distinct_values.slice(0, 12).map((value, idx) => (
                                 <Badge 
                                   key={idx} 
                                   variant="outline" 
-                                  className="text-xs font-normal max-w-[200px] truncate"
+                                  className="text-xs font-normal max-w-[250px] truncate"
                                 >
                                   {String(value)}
                                 </Badge>
                               ))}
-                              {field.sample_count! > 8 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  +{field.sample_count! - 8} more
+                              {field.sample_count! > 12 && (
+                                <Badge variant="secondary" className="text-xs font-medium">
+                                  +{field.sample_count! - 12} more
                                 </Badge>
                               )}
                             </div>
@@ -292,21 +301,28 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
                 </div>
               )}
 
-              {/* Summary */}
+              {/* Summary Footer */}
               {fields.length > 0 && (
-                <Card className="p-3 bg-muted/50">
-                  <p className="text-xs text-muted-foreground">
-                    <strong>Included fields:</strong> {fields.filter(f => f.include_in_llm).length} / {fields.length}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Only enabled fields will be sent to the LLM for inference processing
-                  </p>
+                <Card className="p-4 bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold">
+                        Configuration Summary
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {fields.filter(f => f.include_in_llm).length} of {fields.length} fields will be included in LLM processing
+                      </p>
+                    </div>
+                    <Badge className="text-base px-4 py-2">
+                      {fields.filter(f => f.include_in_llm).length}/{fields.length}
+                    </Badge>
+                  </div>
                 </Card>
               )}
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
