@@ -68,7 +68,7 @@ export const AICategoryAssistant = ({ customerId, selectedCategory, onUpdate }: 
         >
           <Bot className="h-4 w-4 mr-2 text-accent" />
           <span className="font-semibold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
-            AI Assistant
+            Feedback
           </span>
           <Sparkles className="h-3 w-3 ml-1 text-accent animate-pulse" />
         </Button>
