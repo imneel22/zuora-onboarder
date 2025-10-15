@@ -13,10 +13,8 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+    <BrowserRouter>
+      <TooltipProvider>
         <SidebarProvider>
           <div className="flex min-h-screen w-full">
             <AppSidebar />
@@ -29,8 +27,10 @@ const App = () => (
             </main>
           </div>
         </SidebarProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+        <Toaster />
+        <Sonner />
+      </TooltipProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 
