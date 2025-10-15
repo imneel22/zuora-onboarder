@@ -11,6 +11,7 @@ import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, 
 import { toast } from "sonner";
 import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
 import { AICategoryAssistant } from "./AICategoryAssistant";
+import { CustomFieldConfig } from "./CustomFieldConfig";
 interface PRPCInference {
   id: string;
   prpc_id: string;
@@ -259,6 +260,7 @@ export const WhatTheySell = ({
             viewMode={viewMode}
             currentFilter={filterBy}
           />
+          {viewMode === "overview" && <CustomFieldConfig customerId={customerId} />}
         </div>
       </div>
 
