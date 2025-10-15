@@ -356,21 +356,42 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
 
               {/* Summary Footer */}
               {fields.length > 0 && (
-                <Card className="p-4 bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold">
-                        Configuration Summary
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {fields.filter(f => f.include_in_llm).length} of {fields.length} fields will be included in LLM processing
-                      </p>
+                <>
+                  <Card className="p-4 bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">
+                          Configuration Summary
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {fields.filter(f => f.include_in_llm).length} of {fields.length} fields will be included in LLM processing
+                        </p>
+                      </div>
+                      <Badge className="text-base px-4 py-2">
+                        {fields.filter(f => f.include_in_llm).length}/{fields.length}
+                      </Badge>
                     </div>
-                    <Badge className="text-base px-4 py-2">
-                      {fields.filter(f => f.include_in_llm).length}/{fields.length}
-                    </Badge>
+                  </Card>
+
+                  {/* Submit Button */}
+                  <div className="flex justify-end gap-3 pt-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        toast.success("LLM field configuration saved successfully");
+                        setDialogOpen(false);
+                      }}
+                      className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
+                    >
+                      Save Configuration
+                    </Button>
                   </div>
-                </Card>
+                </>
               )}
             </div>
           )}
