@@ -248,15 +248,13 @@ export const WhatTheySell = ({
             Overview
           </Button>
         </div>
-        <div>
-          {selectedCategory && <p className="text-xs text-muted-foreground mt-1">
+        <div className="flex items-center gap-3">
+          {selectedCategory && <p className="text-xs text-muted-foreground">
               Viewing: <span className="font-semibold text-foreground">{selectedCategory}</span>
             </p>}
+          <CustomFieldConfig customerId={customerId} />
         </div>
       </div>
-
-      {/* Custom Field Configuration */}
-      <CustomFieldConfig customerId={customerId} />
 
       {viewMode === "overview" ? <div className="space-y-4">
         <Card className="p-4 bg-gradient-to-br from-primary/20 to-accent/20 border-2 border-primary/30">
