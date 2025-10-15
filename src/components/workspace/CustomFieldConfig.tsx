@@ -27,6 +27,7 @@ interface FieldConfig {
   table_name?: string;
   distinct_values?: string[];
   sample_count?: number;
+  record_count?: number;
 }
 
 export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
@@ -100,6 +101,17 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
       .eq("customer_id", customerId)
       .limit(100);
 
+    // Get record counts
+    const { count: prpcCount } = await supabase
+      .from("prpc_inferences")
+      .select("*", { count: 'exact', head: true })
+      .eq("customer_id", customerId);
+
+    const { count: subscriptionCount } = await supabase
+      .from("subscriptions")
+      .select("*", { count: 'exact', head: true })
+      .eq("customer_id", customerId);
+
     // Analyze PRPC fields
     if (prpcData && prpcData.length > 0) {
       const sampleRow = prpcData[0];
@@ -126,7 +138,8 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
             description: existingConfig?.description || null,
             table_name: 'prpc_inferences',
             distinct_values: distinctValues.slice(0, 10),
-            sample_count: distinctValues.length
+            sample_count: distinctValues.length,
+            record_count: prpcCount || 0
           });
         } else {
           // Update the existing field with actual data
@@ -135,6 +148,7 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
             discoveredFields[idx].table_name = 'prpc_inferences';
             discoveredFields[idx].distinct_values = distinctValues.slice(0, 10);
             discoveredFields[idx].sample_count = distinctValues.length;
+            discoveredFields[idx].record_count = prpcCount || 0;
           }
         }
       }
@@ -166,7 +180,8 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
             description: existingConfig?.description || null,
             table_name: 'subscriptions',
             distinct_values: distinctValues.slice(0, 10),
-            sample_count: distinctValues.length
+            sample_count: distinctValues.length,
+            record_count: subscriptionCount || 0
           });
         } else {
           // Update the existing field with actual data
@@ -175,6 +190,7 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
             discoveredFields[idx].table_name = 'subscriptions';
             discoveredFields[idx].distinct_values = distinctValues.slice(0, 10);
             discoveredFields[idx].sample_count = distinctValues.length;
+            discoveredFields[idx].record_count = subscriptionCount || 0;
           }
         }
       }
@@ -321,6 +337,11 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
                               <Badge variant="secondary" className="text-xs">
                                 Table: {field.table_name}
                               </Badge>
+                              {field.record_count !== undefined && (
+                                <Badge variant="outline" className="text-xs bg-primary/5">
+                                  {field.record_count.toLocaleString()} records
+                                </Badge>
+                              )}
                             </div>
                             
                             {/* Field Name */}
