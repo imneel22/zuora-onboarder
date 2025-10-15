@@ -47,7 +47,8 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUseCase, setSelectedUseCase] = useState<UseCase | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -74,7 +75,12 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
 
   const handleUploadClick = (useCase: UseCase) => {
     setSelectedUseCase(useCase);
-    setDialogOpen(true);
+    setUploadDialogOpen(true);
+  };
+
+  const handleRowClick = (useCase: UseCase) => {
+    setSelectedUseCase(useCase);
+    setDetailsDialogOpen(true);
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,7 +119,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
       if (updateError) throw updateError;
 
       toast.success('Waterfall file uploaded successfully');
-      setDialogOpen(false);
+      setUploadDialogOpen(false);
       fetchUseCases();
     } catch (error) {
       console.error('Upload error:', error);
@@ -176,7 +182,11 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
                   </TableRow>
                 ) : (
                   useCases.map((useCase) => (
-                    <TableRow key={useCase.id}>
+                    <TableRow 
+                      key={useCase.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleRowClick(useCase)}
+                    >
                       <TableCell className="font-medium">
                         {useCase.use_case_name}
                       </TableCell>
@@ -201,7 +211,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-2">
                           {useCase.status === "uploaded" && useCase.waterfall_file_url ? (
                             <Button
@@ -233,7 +243,8 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
         </CardContent>
       </Card>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {/* Upload Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Upload Waterfall File</DialogTitle>
@@ -257,7 +268,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDialogOpen(false)}
+              onClick={() => setUploadDialogOpen(false)}
               disabled={uploading}
             >
               Cancel
@@ -267,6 +278,93 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
               disabled={uploading}
             >
               {uploading ? "Uploading..." : "Select File"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Details Dialog */}
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedUseCase?.use_case_name}</DialogTitle>
+            <DialogDescription>
+              Complete details for this use case
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUseCase && (
+            <div className="space-y-6 py-4">
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Category</h4>
+                <Badge variant="secondary">{selectedUseCase.category}</Badge>
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Description</h4>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {selectedUseCase.description || 'No description available'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Triggering</h4>
+                  <p className="text-sm">{selectedUseCase.triggering || '-'}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Timing</h4>
+                  <p className="text-sm">{selectedUseCase.timing || '-'}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Scenarios</h4>
+                  <p className="text-sm">{selectedUseCase.scenarios}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Status</h4>
+                  {selectedUseCase.status === "uploaded" ? (
+                    <Badge variant="default" className="bg-green-100 text-green-800">
+                      <FileText className="h-3 w-3 mr-1" />
+                      Uploaded
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                      Pending
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {selectedUseCase.comments && (
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Comments</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedUseCase.comments}
+                  </p>
+                </div>
+              )}
+
+              {selectedUseCase.has_waterfall && selectedUseCase.waterfall_file_name && (
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Waterfall File</h4>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{selectedUseCase.waterfall_file_name}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownload(selectedUseCase)}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsDialogOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
