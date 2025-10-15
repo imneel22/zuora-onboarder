@@ -137,7 +137,7 @@ export const CustomFieldConfig = ({ customerId }: { customerId: string }) => {
             className="relative group hover:scale-105 transition-all duration-300 border-2 border-primary/30 hover:border-primary shadow-lg hover:shadow-primary/20 bg-gradient-to-r from-primary/5 to-accent/5"
           >
             <span className="font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Configure LLM Fields
+              Configure Custom Fields for LLM Input
             </span>
             {fields.length > 0 && (
               <Badge 
