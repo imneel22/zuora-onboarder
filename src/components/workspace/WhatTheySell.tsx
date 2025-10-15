@@ -10,7 +10,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, Cloud, Cpu, Code, Sparkles, Layers, Gift, Users, Briefcase, HeadphonesIcon, GraduationCap, Info } from "lucide-react";
 import { toast } from "sonner";
 import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
-import { CustomFieldConfig } from "./CustomFieldConfig";
 import { AICategoryAssistant } from "./AICategoryAssistant";
 interface PRPCInference {
   id: string;
@@ -260,7 +259,6 @@ export const WhatTheySell = ({
             viewMode={viewMode}
             currentFilter={filterBy}
           />
-          <CustomFieldConfig customerId={customerId} />
         </div>
       </div>
 
