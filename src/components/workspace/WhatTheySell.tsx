@@ -257,6 +257,8 @@ export const WhatTheySell = ({
             customerId={customerId} 
             selectedCategory={selectedCategory}
             onUpdate={fetchInferences}
+            viewMode={viewMode}
+            currentFilter={filterBy}
           />
           <CustomFieldConfig customerId={customerId} />
         </div>

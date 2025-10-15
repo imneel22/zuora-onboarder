@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { feedback, customerId, selectedCategory } = await req.json();
+    const { feedback, customerId, selectedCategory, isLowConfidenceUpdate, viewMode } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
@@ -20,20 +20,57 @@ serve(async (req) => {
     }
 
     console.log('Processing feedback:', feedback, 'for category:', selectedCategory);
+    console.log('View mode:', viewMode, 'Low confidence update:', isLowConfidenceUpdate);
 
-    // Get current PRPCs in this category
+    // Get current PRPCs
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { data: prpcs } = await supabase
+    let query = supabase
       .from('prpc_inferences')
       .select('*')
-      .eq('customer_id', customerId)
-      .eq('inferred_product_category', selectedCategory)
-      .limit(20);
+      .eq('customer_id', customerId);
+
+    // If in details view with selected category
+    if (selectedCategory) {
+      query = query.eq('inferred_product_category', selectedCategory);
+    }
+
+    // If updating low confidence items specifically
+    if (isLowConfidenceUpdate) {
+      query = query.lt('confidence', 0.4);
+    }
+
+    const { data: prpcs } = await query.limit(100);
 
     const prpcList = prpcs?.map(p => `${p.product_name} - ${p.rate_plan_name} - ${p.charge_name}`).join('\n') || '';
+
+    const systemPrompt = isLowConfidenceUpdate
+      ? `You are updating low confidence product categorizations in bulk. All items shown are currently in the "${selectedCategory}" category with low confidence (<40%).
+Analyze the user's feedback and determine the correct category for these items.`
+      : `You are a product categorization assistant. Analyze user feedback about product categories and determine:
+1. What products/patterns the user is referring to
+2. What the correct category should be
+3. Provide structured output using the categorization_update tool.`;
+
+    const userPrompt = isLowConfidenceUpdate
+      ? `User wants to recategorize all low confidence items in "${selectedCategory}".
+
+User feedback: "${feedback}"
+
+These are low confidence items currently in ${selectedCategory}:
+${prpcList}
+
+What should be the correct category for these items?`
+      : `User feedback: "${feedback}"
+
+Current category: ${selectedCategory || 'Not specified'}
+
+Some PRPCs in scope:
+${prpcList}
+
+Based on this feedback, what product category updates should be made?`;
 
     // Use Lovable AI to understand the feedback and generate update instructions
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -47,10 +84,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a product categorization assistant. Analyze user feedback about product categories and determine:
-1. What products/patterns the user is referring to
-2. What the correct category should be
-3. Provide structured output using the categorization_update tool.
+            content: systemPrompt + `
 
 Available categories:
 - SaaS (Software as a Service)
@@ -67,14 +101,7 @@ Available categories:
           },
           {
             role: 'user',
-            content: `User feedback: "${feedback}"
-
-Current category: ${selectedCategory}
-
-Some PRPCs in this category:
-${prpcList}
-
-Based on this feedback, what product category updates should be made?`
+            content: userPrompt
           }
         ],
         tools: [
@@ -127,14 +154,22 @@ Based on this feedback, what product category updates should be made?`
     console.log('Parsed arguments:', args);
 
     // Update matching PRPCs
-    const pattern = args.pattern_to_match.toLowerCase();
-    const matchingPrpcs = prpcs?.filter(p => 
-      p.product_name.toLowerCase().includes(pattern) ||
-      p.rate_plan_name.toLowerCase().includes(pattern) ||
-      p.charge_name.toLowerCase().includes(pattern)
-    ) || [];
-
-    console.log(`Found ${matchingPrpcs.length} matching PRPCs for pattern: ${pattern}`);
+    let matchingPrpcs: any[] = [];
+    
+    if (isLowConfidenceUpdate && selectedCategory) {
+      // Update all low confidence items in the category
+      matchingPrpcs = prpcs || [];
+      console.log(`Bulk updating ${matchingPrpcs.length} low confidence PRPCs in ${selectedCategory}`);
+    } else {
+      // Update based on pattern matching
+      const pattern = args.pattern_to_match.toLowerCase();
+      matchingPrpcs = prpcs?.filter(p => 
+        p.product_name.toLowerCase().includes(pattern) ||
+        p.rate_plan_name.toLowerCase().includes(pattern) ||
+        p.charge_name.toLowerCase().includes(pattern)
+      ) || [];
+      console.log(`Found ${matchingPrpcs.length} matching PRPCs for pattern: ${pattern}`);
+    }
 
     if (matchingPrpcs.length > 0) {
       const { error: updateError } = await supabase
