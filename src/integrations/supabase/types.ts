@@ -484,6 +484,71 @@ export type Database = {
           },
         ]
       }
+      use_cases: {
+        Row: {
+          category: string
+          comments: string | null
+          created_at: string
+          customer_id: string
+          description: string | null
+          has_waterfall: boolean
+          id: string
+          metadata: Json | null
+          scenarios: number | null
+          status: string
+          timing: string | null
+          triggering: string | null
+          updated_at: string
+          use_case_name: string
+          waterfall_file_name: string | null
+          waterfall_file_url: string | null
+        }
+        Insert: {
+          category: string
+          comments?: string | null
+          created_at?: string
+          customer_id: string
+          description?: string | null
+          has_waterfall?: boolean
+          id?: string
+          metadata?: Json | null
+          scenarios?: number | null
+          status?: string
+          timing?: string | null
+          triggering?: string | null
+          updated_at?: string
+          use_case_name: string
+          waterfall_file_name?: string | null
+          waterfall_file_url?: string | null
+        }
+        Update: {
+          category?: string
+          comments?: string | null
+          created_at?: string
+          customer_id?: string
+          description?: string | null
+          has_waterfall?: boolean
+          id?: string
+          metadata?: Json | null
+          scenarios?: number | null
+          status?: string
+          timing?: string | null
+          triggering?: string | null
+          updated_at?: string
+          use_case_name?: string
+          waterfall_file_name?: string | null
+          waterfall_file_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "use_cases_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
