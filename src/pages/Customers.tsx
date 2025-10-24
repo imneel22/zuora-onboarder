@@ -52,7 +52,6 @@ const Customers = () => {
   }, []);
 
   const fetchUsers = async () => {
-  const fetchUsers = async () => {
     const { data: profilesData, error: profilesError } = await supabase
       .from("profiles")
       .select("id, full_name, email");
@@ -87,7 +86,6 @@ const Customers = () => {
       setSelectedUserId(usersWithRoles[0].id);
       setSelectedUserRole(usersWithRoles[0].role);
     }
-  };
   };
   const fetchCustomers = async () => {
     setLoading(true);
