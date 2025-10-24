@@ -324,7 +324,22 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Select Use Cases ({selectedUseCaseIds.length} selected)</Label>
+              <div className="flex items-center justify-between">
+                <Label>Select Use Cases ({selectedUseCaseIds.length} selected)</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (selectedUseCaseIds.length === useCases.length) {
+                      setSelectedUseCaseIds([]);
+                    } else {
+                      setSelectedUseCaseIds(useCases.map(uc => uc.id));
+                    }
+                  }}
+                >
+                  {selectedUseCaseIds.length === useCases.length ? "Deselect All" : "Select All"}
+                </Button>
+              </div>
               <div className="border rounded-md max-h-60 overflow-y-auto">
                 {useCases.map((uc) => (
                   <div
