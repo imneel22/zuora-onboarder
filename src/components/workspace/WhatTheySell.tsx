@@ -558,7 +558,18 @@ export const WhatTheySell = ({
             viewMode={viewMode}
             currentFilter={filterBy}
           />
-          {viewMode === "overview" && <CustomFieldConfig customerId={customerId} />}
+          {viewMode === "overview" && (
+            <>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsRenameDialogOpen(true)}
+              >
+                Rename Category
+              </Button>
+              <CustomFieldConfig customerId={customerId} />
+            </>
+          )}
         </div>
       </div>
 
@@ -656,66 +667,53 @@ export const WhatTheySell = ({
               </Select>
 
               {selectedCategory && (
-                <>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <ArrowRightLeft className="h-4 w-4 mr-2" />
-                        Merge Category
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="bg-background">
-                      <DialogHeader>
-                        <DialogTitle>Merge Category: {selectedCategory}</DialogTitle>
-                        <DialogDescription>
-                          Move all PRPCs from "{selectedCategory}" to another category
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Target Category</label>
-                          <Select onValueChange={setBulkTargetCategory}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select target category" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-background">
-                              {availableCategories
-                                .filter(cat => cat !== selectedCategory)
-                                .map((category) => (
-                                  <SelectItem key={category} value={category}>
-                                    {category}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <ArrowRightLeft className="h-4 w-4 mr-2" />
+                      Merge Category
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-background">
+                    <DialogHeader>
+                      <DialogTitle>Merge Category: {selectedCategory}</DialogTitle>
+                      <DialogDescription>
+                        Move all PRPCs from "{selectedCategory}" to another category
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Target Category</label>
+                        <Select onValueChange={setBulkTargetCategory}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select target category" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background">
+                            {availableCategories
+                              .filter(cat => cat !== selectedCategory)
+                              .map((category) => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <DialogFooter>
-                        <Button
-                          onClick={() => {
-                            if (bulkTargetCategory && selectedCategory) {
-                              handleMergeCategory(selectedCategory, bulkTargetCategory);
-                            }
-                          }}
-                          disabled={!bulkTargetCategory}
-                        >
-                          Merge All PRPCs
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setCategoryToRename(selectedCategory);
-                      setIsRenameDialogOpen(true);
-                    }}
-                  >
-                    Rename Category
-                  </Button>
-                </>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        onClick={() => {
+                          if (bulkTargetCategory && selectedCategory) {
+                            handleMergeCategory(selectedCategory, bulkTargetCategory);
+                          }
+                        }}
+                        disabled={!bulkTargetCategory}
+                      >
+                        Merge All PRPCs
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               )}
             </div>
 
