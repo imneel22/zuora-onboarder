@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, Cloud, Cpu, Code, Sparkles, Layers, Gift, Users, Briefcase, HeadphonesIcon, GraduationCap, Info } from "lucide-react";
+import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, Cloud, Cpu, Code, Sparkles, Layers, Gift, Users, Briefcase, HeadphonesIcon, GraduationCap, Info, ArrowRightLeft } from "lucide-react";
 import { toast } from "sonner";
 import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
 import { AICategoryAssistant } from "./AICategoryAssistant";
@@ -57,6 +59,8 @@ export const WhatTheySell = ({
   const [viewMode, setViewMode] = useState<"overview" | "details">("overview");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [selectedInferenceIds, setSelectedInferenceIds] = useState<Set<string>>(new Set());
+  const [bulkTargetCategory, setBulkTargetCategory] = useState<string>("");
   useEffect(() => {
     console.log("Component mounted, customer ID:", customerId);
     fetchUserRole();
@@ -214,6 +218,143 @@ export const WhatTheySell = ({
     // Refresh data
     fetchInferences();
     fetchCategoryStats();
+  };
+
+  const handleBulkCategoryChange = async () => {
+    if (selectedInferenceIds.size === 0) {
+      toast.error("Please select PRPCs to update");
+      return;
+    }
+
+    if (!bulkTargetCategory) {
+      toast.error("Please select a target category");
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("You must be logged in to update categories");
+      return;
+    }
+
+    const idsArray = Array.from(selectedInferenceIds);
+
+    // Update all selected inferences
+    const { error: updateError } = await supabase
+      .from("prpc_inferences")
+      .update({
+        inferred_product_category: bulkTargetCategory,
+        status: "user_adjusted",
+        last_reviewed_by: user.id,
+        last_reviewed_at: new Date().toISOString()
+      })
+      .in("id", idsArray);
+
+    if (updateError) {
+      toast.error("Failed to update categories");
+      console.error(updateError);
+      return;
+    }
+
+    // Log audit entries
+    for (const id of idsArray) {
+      const currentInference = inferences.find(inf => inf.id === id);
+      await supabase
+        .from("audit_log")
+        .insert({
+          customer_id: customerId,
+          entity_type: "prpc_inference",
+          entity_id: id,
+          action: "bulk_category_override",
+          before_json: { inferred_product_category: currentInference?.inferred_product_category },
+          after_json: { inferred_product_category: bulkTargetCategory },
+          actor: user.id
+        });
+    }
+
+    toast.success(`Updated ${idsArray.length} PRPCs to ${bulkTargetCategory}`);
+    
+    // Clear selection and refresh
+    setSelectedInferenceIds(new Set());
+    setBulkTargetCategory("");
+    fetchInferences();
+    fetchCategoryStats();
+  };
+
+  const handleMergeCategory = async (fromCategory: string, toCategory: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("You must be logged in");
+      return;
+    }
+
+    // Get all PRPCs in the source category
+    const { data: prpcsToUpdate, error: fetchError } = await supabase
+      .from("prpc_inferences")
+      .select("id")
+      .eq("customer_id", customerId)
+      .eq("inferred_product_category", fromCategory);
+
+    if (fetchError || !prpcsToUpdate) {
+      toast.error("Failed to fetch PRPCs");
+      return;
+    }
+
+    // Update all PRPCs from old category to new category
+    const { error: updateError } = await supabase
+      .from("prpc_inferences")
+      .update({
+        inferred_product_category: toCategory,
+        status: "user_adjusted",
+        last_reviewed_by: user.id,
+        last_reviewed_at: new Date().toISOString()
+      })
+      .eq("customer_id", customerId)
+      .eq("inferred_product_category", fromCategory);
+
+    if (updateError) {
+      toast.error("Failed to merge categories");
+      console.error(updateError);
+      return;
+    }
+
+    // Log audit entry
+    await supabase
+      .from("audit_log")
+      .insert({
+        customer_id: customerId,
+        entity_type: "category_merge",
+        entity_id: customerId,
+        action: "merge_category",
+        before_json: { from_category: fromCategory, prpc_count: prpcsToUpdate.length },
+        after_json: { to_category: toCategory },
+        actor: user.id
+      });
+
+    toast.success(`Merged ${prpcsToUpdate.length} PRPCs from "${fromCategory}" to "${toCategory}"`);
+    
+    // Refresh data and go back to overview
+    handleBackToOverview();
+    fetchInferences();
+    fetchCategoryStats();
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedInferenceIds.size === filteredInferences.length) {
+      setSelectedInferenceIds(new Set());
+    } else {
+      setSelectedInferenceIds(new Set(filteredInferences.map(inf => inf.id)));
+    }
+  };
+
+  const toggleSelectInference = (id: string) => {
+    const newSet = new Set(selectedInferenceIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedInferenceIds(newSet);
   };
   let filteredInferences = inferences.filter(inf => inf.product_name.toLowerCase().includes(search.toLowerCase()) || inf.rate_plan_name.toLowerCase().includes(search.toLowerCase()) || inf.charge_name.toLowerCase().includes(search.toLowerCase()) || inf.inferred_product_category?.toLowerCase().includes(search.toLowerCase()) || inf.inferred_pob?.toLowerCase().includes(search.toLowerCase()));
   console.log("Total inferences:", inferences.length);
@@ -413,26 +554,120 @@ export const WhatTheySell = ({
             </div>}
         </div>
       </div> : <>
-          {/* Confidence Filter */}
-          <div className="flex gap-2">
-            <Select value={filterBy} onValueChange={setFilterBy}>
-              <SelectTrigger className="w-[250px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filter by confidence..." />
-              </SelectTrigger>
-              <SelectContent className="bg-background z-50">
-                <SelectItem value="low">Low Confidence (&lt; 40%)</SelectItem>
-                <SelectItem value="medium">Medium Confidence (40% - 69%)</SelectItem>
-                <SelectItem value="high">High Confidence (≥ 70%)</SelectItem>
-                <SelectItem value="all">All Confidence Levels</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Filters and Bulk Actions */}
+          <div className="flex gap-2 items-center justify-between">
+            <div className="flex gap-2 items-center">
+              <Select value={filterBy} onValueChange={setFilterBy}>
+                <SelectTrigger className="w-[250px]">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Filter by confidence..." />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="low">Low Confidence (&lt; 40%)</SelectItem>
+                  <SelectItem value="medium">Medium Confidence (40% - 69%)</SelectItem>
+                  <SelectItem value="high">High Confidence (≥ 70%)</SelectItem>
+                  <SelectItem value="all">All Confidence Levels</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {selectedCategory && (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <ArrowRightLeft className="h-4 w-4 mr-2" />
+                      Merge Category
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-background">
+                    <DialogHeader>
+                      <DialogTitle>Merge Category: {selectedCategory}</DialogTitle>
+                      <DialogDescription>
+                        Move all PRPCs from "{selectedCategory}" to another category
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Target Category</label>
+                        <Select onValueChange={setBulkTargetCategory}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select target category" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background">
+                            {availableCategories
+                              .filter(cat => cat !== selectedCategory)
+                              .map((category) => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        onClick={() => {
+                          if (bulkTargetCategory && selectedCategory) {
+                            handleMergeCategory(selectedCategory, bulkTargetCategory);
+                          }
+                        }}
+                        disabled={!bulkTargetCategory}
+                      >
+                        Merge All PRPCs
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+
+            {selectedInferenceIds.size > 0 && (
+              <Card className="px-4 py-2 bg-primary/5 border-primary/20">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-medium">
+                    {selectedInferenceIds.size} selected
+                  </span>
+                  <Select value={bulkTargetCategory} onValueChange={setBulkTargetCategory}>
+                    <SelectTrigger className="w-[200px] h-8">
+                      <SelectValue placeholder="Move to category..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background z-50">
+                      {availableCategories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    size="sm" 
+                    onClick={handleBulkCategoryChange}
+                    disabled={!bulkTargetCategory}
+                  >
+                    Apply
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => setSelectedInferenceIds(new Set())}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </Card>
+            )}
           </div>
 
           <Card>
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={selectedInferenceIds.size === filteredInferences.length && filteredInferences.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead>Product Rate Plan Charge</TableHead>
                   <TableHead>Product Category</TableHead>
                   <TableHead>Revenue Recognition Timing</TableHead>
@@ -444,6 +679,12 @@ export const WhatTheySell = ({
               </TableHeader>
               <TableBody>
                 {filteredInferences.map(inference => <TableRow key={inference.id} className="hover:bg-muted/50">
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedInferenceIds.has(inference.id)}
+                        onCheckedChange={() => toggleSelectInference(inference.id)}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium cursor-pointer" onClick={() => setSelectedInference(inference)}>
                       {inference.product_name}
                     </TableCell>
