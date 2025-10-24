@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, Cloud, Cpu, Code, Sparkles, Layers, Gift, Users, Briefcase, HeadphonesIcon, GraduationCap, Info, ArrowRightLeft } from "lucide-react";
+import { Search, CheckCircle, AlertTriangle, Filter, LayoutGrid, List, Package, TrendingUp, Cloud, Cpu, Code, Sparkles, Layers, Gift, Users, Briefcase, HeadphonesIcon, GraduationCap, Info, ArrowRightLeft, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { PRPCEvidenceDrawer } from "./evidence/PRPCEvidenceDrawer";
 import { AICategoryAssistant } from "./AICategoryAssistant";
@@ -64,6 +64,8 @@ export const WhatTheySell = ({
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [categoryToRename, setCategoryToRename] = useState<string>("");
   const [newCategoryName, setNewCategoryName] = useState<string>("");
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState<string>("");
   useEffect(() => {
     console.log("Component mounted, customer ID:", customerId);
     fetchUserRole();
@@ -424,6 +426,90 @@ export const WhatTheySell = ({
     fetchAvailableCategories();
   };
 
+  const handleInlineRename = async (oldName: string, newName: string) => {
+    if (!newName.trim() || oldName === newName) {
+      setEditingCategory(null);
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("You must be logged in");
+      setEditingCategory(null);
+      return;
+    }
+
+    // Get all PRPCs in the category to rename
+    const { data: prpcsToUpdate, error: fetchError } = await supabase
+      .from("prpc_inferences")
+      .select("id")
+      .eq("customer_id", customerId)
+      .eq("inferred_product_category", oldName);
+
+    if (fetchError) {
+      toast.error("Failed to fetch PRPCs");
+      setEditingCategory(null);
+      return;
+    }
+
+    // Update all PRPCs with the new category name
+    const { error: updateError } = await supabase
+      .from("prpc_inferences")
+      .update({
+        inferred_product_category: newName,
+        status: "user_adjusted",
+        last_reviewed_by: user.id,
+        last_reviewed_at: new Date().toISOString()
+      })
+      .eq("customer_id", customerId)
+      .eq("inferred_product_category", oldName);
+
+    if (updateError) {
+      toast.error("Failed to rename category");
+      console.error(updateError);
+      setEditingCategory(null);
+      return;
+    }
+
+    // Update the category catalog
+    const { error: catalogError } = await supabase
+      .from("product_category_catalog")
+      .update({ category_name: newName })
+      .eq("category_name", oldName)
+      .eq("customer_id", customerId);
+
+    if (catalogError) {
+      console.error("Failed to update catalog:", catalogError);
+    }
+
+    // Log audit entry
+    await supabase
+      .from("audit_log")
+      .insert({
+        customer_id: customerId,
+        entity_type: "category_rename",
+        entity_id: customerId,
+        action: "rename_category",
+        before_json: { old_name: oldName, prpc_count: prpcsToUpdate?.length || 0 },
+        after_json: { new_name: newName },
+        actor: user.id
+      });
+
+    toast.success(`Renamed "${oldName}" to "${newName}" (${prpcsToUpdate?.length || 0} PRPCs updated)`);
+    
+    // Reset editing state
+    setEditingCategory(null);
+    setEditingCategoryName("");
+    
+    // Refresh data
+    if (selectedCategory === oldName) {
+      setSelectedCategory(newName);
+    }
+    fetchInferences();
+    fetchCategoryStats();
+    fetchAvailableCategories();
+  };
+
   const toggleSelectAll = () => {
     if (selectedInferenceIds.size === filteredInferences.length) {
       setSelectedInferenceIds(new Set());
@@ -603,13 +689,67 @@ export const WhatTheySell = ({
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categoryStats.length > 0 ? categoryStats.map((stat, index) => <Card key={stat.category} className={`p-6 bg-gradient-to-br ${getCategoryColor(index)} hover:shadow-lg transition-all cursor-pointer hover:scale-105`} onClick={() => handleCategoryClick(stat.category)}>
+          {categoryStats.length > 0 ? categoryStats.map((stat, index) => <Card key={stat.category} className={`p-6 bg-gradient-to-br ${getCategoryColor(index)} hover:shadow-lg transition-all cursor-pointer hover:scale-105 group`} onClick={() => handleCategoryClick(stat.category)}>
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     {getCategoryIcon(stat.category)}
                     <div>
-                      <h4 className="font-semibold text-lg">{stat.category}</h4>
-                      <p className="text-xs text-muted-foreground">Product Category</p>
+                      {editingCategory === stat.category ? (
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Input
+                            value={editingCategoryName}
+                            onChange={(e) => setEditingCategoryName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleInlineRename(stat.category, editingCategoryName);
+                              } else if (e.key === 'Escape') {
+                                setEditingCategory(null);
+                                setEditingCategoryName("");
+                              }
+                            }}
+                            className="h-8 w-40 text-sm font-semibold"
+                            autoFocus
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleInlineRename(stat.category, editingCategoryName)}
+                          >
+                            <CheckCircle className="h-4 w-4 text-success" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                              setEditingCategory(null);
+                              setEditingCategoryName("");
+                            }}
+                          >
+                            <AlertTriangle className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-lg">{stat.category}</h4>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingCategory(stat.category);
+                                setEditingCategoryName(stat.category);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Product Category</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
