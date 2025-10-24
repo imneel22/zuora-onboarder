@@ -61,6 +61,9 @@ export const WhatTheySell = ({
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [selectedInferenceIds, setSelectedInferenceIds] = useState<Set<string>>(new Set());
   const [bulkTargetCategory, setBulkTargetCategory] = useState<string>("");
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const [categoryToRename, setCategoryToRename] = useState<string>("");
+  const [newCategoryName, setNewCategoryName] = useState<string>("");
   useEffect(() => {
     console.log("Component mounted, customer ID:", customerId);
     fetchUserRole();
@@ -339,6 +342,88 @@ export const WhatTheySell = ({
     fetchCategoryStats();
   };
 
+  const handleRenameCategory = async () => {
+    if (!categoryToRename || !newCategoryName.trim()) {
+      toast.error("Please enter a valid category name");
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("You must be logged in");
+      return;
+    }
+
+    // Get all PRPCs in the category to rename
+    const { data: prpcsToUpdate, error: fetchError } = await supabase
+      .from("prpc_inferences")
+      .select("id")
+      .eq("customer_id", customerId)
+      .eq("inferred_product_category", categoryToRename);
+
+    if (fetchError) {
+      toast.error("Failed to fetch PRPCs");
+      return;
+    }
+
+    // Update all PRPCs with the new category name
+    const { error: updateError } = await supabase
+      .from("prpc_inferences")
+      .update({
+        inferred_product_category: newCategoryName,
+        status: "user_adjusted",
+        last_reviewed_by: user.id,
+        last_reviewed_at: new Date().toISOString()
+      })
+      .eq("customer_id", customerId)
+      .eq("inferred_product_category", categoryToRename);
+
+    if (updateError) {
+      toast.error("Failed to rename category");
+      console.error(updateError);
+      return;
+    }
+
+    // Update the category catalog
+    const { error: catalogError } = await supabase
+      .from("product_category_catalog")
+      .update({ category_name: newCategoryName })
+      .eq("category_name", categoryToRename)
+      .eq("customer_id", customerId);
+
+    if (catalogError) {
+      console.error("Failed to update catalog:", catalogError);
+    }
+
+    // Log audit entry
+    await supabase
+      .from("audit_log")
+      .insert({
+        customer_id: customerId,
+        entity_type: "category_rename",
+        entity_id: customerId,
+        action: "rename_category",
+        before_json: { old_name: categoryToRename, prpc_count: prpcsToUpdate?.length || 0 },
+        after_json: { new_name: newCategoryName },
+        actor: user.id
+      });
+
+    toast.success(`Renamed "${categoryToRename}" to "${newCategoryName}" (${prpcsToUpdate?.length || 0} PRPCs updated)`);
+    
+    // Reset dialog state
+    setIsRenameDialogOpen(false);
+    setCategoryToRename("");
+    setNewCategoryName("");
+    
+    // Refresh data
+    if (selectedCategory === categoryToRename) {
+      setSelectedCategory(newCategoryName);
+    }
+    fetchInferences();
+    fetchCategoryStats();
+    fetchAvailableCategories();
+  };
+
   const toggleSelectAll = () => {
     if (selectedInferenceIds.size === filteredInferences.length) {
       setSelectedInferenceIds(new Set());
@@ -571,53 +656,66 @@ export const WhatTheySell = ({
               </Select>
 
               {selectedCategory && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <ArrowRightLeft className="h-4 w-4 mr-2" />
-                      Merge Category
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-background">
-                    <DialogHeader>
-                      <DialogTitle>Merge Category: {selectedCategory}</DialogTitle>
-                      <DialogDescription>
-                        Move all PRPCs from "{selectedCategory}" to another category
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Target Category</label>
-                        <Select onValueChange={setBulkTargetCategory}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select target category" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background">
-                            {availableCategories
-                              .filter(cat => cat !== selectedCategory)
-                              .map((category) => (
-                                <SelectItem key={category} value={category}>
-                                  {category}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        onClick={() => {
-                          if (bulkTargetCategory && selectedCategory) {
-                            handleMergeCategory(selectedCategory, bulkTargetCategory);
-                          }
-                        }}
-                        disabled={!bulkTargetCategory}
-                      >
-                        Merge All PRPCs
+                <>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <ArrowRightLeft className="h-4 w-4 mr-2" />
+                        Merge Category
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    </DialogTrigger>
+                    <DialogContent className="bg-background">
+                      <DialogHeader>
+                        <DialogTitle>Merge Category: {selectedCategory}</DialogTitle>
+                        <DialogDescription>
+                          Move all PRPCs from "{selectedCategory}" to another category
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Target Category</label>
+                          <Select onValueChange={setBulkTargetCategory}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select target category" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background">
+                              {availableCategories
+                                .filter(cat => cat !== selectedCategory)
+                                .map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    {category}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          onClick={() => {
+                            if (bulkTargetCategory && selectedCategory) {
+                              handleMergeCategory(selectedCategory, bulkTargetCategory);
+                            }
+                          }}
+                          disabled={!bulkTargetCategory}
+                        >
+                          Merge All PRPCs
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setCategoryToRename(selectedCategory);
+                      setIsRenameDialogOpen(true);
+                    }}
+                  >
+                    Rename Category
+                  </Button>
+                </>
               )}
             </div>
 
@@ -753,5 +851,50 @@ export const WhatTheySell = ({
         </>}
 
       <PRPCEvidenceDrawer inference={selectedInference} open={!!selectedInference} onClose={() => setSelectedInference(null)} onUpdate={fetchInferences} userRole={userRole} />
+
+      {/* Rename Category Dialog */}
+      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
+        <DialogContent className="bg-background">
+          <DialogHeader>
+            <DialogTitle>Rename Category</DialogTitle>
+            <DialogDescription>
+              Rename a category and update all associated PRPCs
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Category to Rename</label>
+              <Select value={categoryToRename} onValueChange={setCategoryToRename}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent className="bg-background">
+                  {availableCategories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">New Category Name</label>
+              <Input
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Enter new category name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRenameDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRenameCategory} disabled={!categoryToRename || !newCategoryName.trim()}>
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>;
 };
