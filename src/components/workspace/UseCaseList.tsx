@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Upload, Eye, FileText, Download } from "lucide-react";
+import { Upload, Eye, FileText, Download, CheckSquare } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -72,6 +72,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUseCase, setSelectedUseCase] = useState<UseCase | null>(null);
+  const [selectedUseCaseIds, setSelectedUseCaseIds] = useState<string[]>([]);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -121,13 +122,13 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !selectedUseCase) return;
+    if (!file || selectedUseCaseIds.length === 0) return;
 
     setUploading(true);
     try {
       // Upload file to storage
       const fileExt = file.name.split('.').pop();
-      const fileName = `${selectedUseCase.id}-${Date.now()}.${fileExt}`;
+      const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${customerId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -141,21 +142,29 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
         .from('waterfall-files')
         .getPublicUrl(filePath);
 
-      // Update use case record
-      const { error: updateError } = await supabase
-        .from('use_cases')
-        .update({
-          has_waterfall: true,
-          waterfall_file_url: publicUrl,
-          waterfall_file_name: file.name,
-          status: 'uploaded',
-        })
-        .eq('id', selectedUseCase.id);
+      // Update all selected use cases
+      const updatePromises = selectedUseCaseIds.map(useCaseId =>
+        supabase
+          .from('use_cases')
+          .update({
+            has_waterfall: true,
+            waterfall_file_url: publicUrl,
+            waterfall_file_name: file.name,
+            status: 'uploaded',
+          })
+          .eq('id', useCaseId)
+      );
 
-      if (updateError) throw updateError;
+      const results = await Promise.all(updatePromises);
+      
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) {
+        throw new Error(`Failed to update ${errors.length} use case(s)`);
+      }
 
-      toast.success('Waterfall file uploaded successfully');
+      toast.success(`Waterfall file uploaded for ${selectedUseCaseIds.length} use case(s)`);
       setUploadDialogOpen(false);
+      setSelectedUseCaseIds([]);
       fetchUseCases();
     } catch (error) {
       console.error('Upload error:', error);
@@ -163,6 +172,16 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
     } finally {
       setUploading(false);
     }
+  };
+
+  const toggleUseCaseSelection = (useCaseId: string) => {
+    setSelectedUseCaseIds(prev => {
+      if (prev.includes(useCaseId)) {
+        return prev.filter(id => id !== useCaseId);
+      } else {
+        return [...prev, useCaseId];
+      }
+    });
   };
 
   const handleDownload = async (useCase: UseCase) => {
@@ -292,34 +311,47 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
       </Card>
 
       {/* Upload Dialog */}
-      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-        <DialogContent>
+      <Dialog open={uploadDialogOpen} onOpenChange={(open) => {
+        setUploadDialogOpen(open);
+        if (!open) setSelectedUseCaseIds([]);
+      }}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Upload Waterfall</DialogTitle>
             <DialogDescription>
-              Select a use case and upload its waterfall document
+              Select one or multiple use cases to upload the same waterfall document
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="use-case-select">Select Use Case</Label>
-              <select
-                id="use-case-select"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                value={selectedUseCase?.id || ""}
-                onChange={(e) => {
-                  const useCase = useCases.find(uc => uc.id === e.target.value);
-                  setSelectedUseCase(useCase || null);
-                }}
-                disabled={uploading}
-              >
-                <option value="">Choose a use case...</option>
+              <Label>Select Use Cases ({selectedUseCaseIds.length} selected)</Label>
+              <div className="border rounded-md max-h-60 overflow-y-auto">
                 {useCases.map((uc) => (
-                  <option key={uc.id} value={uc.id}>
-                    {uc.use_case_name}
-                  </option>
+                  <div
+                    key={uc.id}
+                    className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer border-b last:border-b-0"
+                    onClick={() => toggleUseCaseSelection(uc.id)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedUseCaseIds.includes(uc.id)}
+                      onChange={() => toggleUseCaseSelection(uc.id)}
+                      className="h-4 w-4 rounded border-gray-300"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">{uc.use_case_name}</div>
+                      <div className="text-xs text-muted-foreground">{uc.category}</div>
+                    </div>
+                    {uc.status === "uploaded" && (
+                      <Badge variant="outline" className="text-xs">
+                        <FileText className="h-3 w-3 mr-1" />
+                        Has Waterfall
+                      </Badge>
+                    )}
+                  </div>
                 ))}
-              </select>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="waterfall-file">Waterfall File (PDF, Excel, etc.)</Label>
@@ -329,8 +361,13 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 accept=".pdf,.xlsx,.xls,.doc,.docx"
-                disabled={uploading || !selectedUseCase}
+                disabled={uploading || selectedUseCaseIds.length === 0}
               />
+              {selectedUseCaseIds.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Please select at least one use case to upload a waterfall
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
@@ -338,7 +375,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
               variant="outline"
               onClick={() => {
                 setUploadDialogOpen(false);
-                setSelectedUseCase(null);
+                setSelectedUseCaseIds([]);
               }}
               disabled={uploading}
             >
@@ -346,7 +383,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
             </Button>
             <Button
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploading || !selectedUseCase}
+              disabled={uploading || selectedUseCaseIds.length === 0}
             >
               {uploading ? "Uploading..." : "Select File"}
             </Button>
