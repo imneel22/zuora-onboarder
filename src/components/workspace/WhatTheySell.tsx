@@ -66,6 +66,8 @@ export const WhatTheySell = ({
   const [newCategoryName, setNewCategoryName] = useState<string>("");
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState<string>("");
+  const [isCreatingNewCategory, setIsCreatingNewCategory] = useState(false);
+  const [newBulkCategoryName, setNewBulkCategoryName] = useState<string>("");
   useEffect(() => {
     console.log("Component mounted, customer ID:", customerId);
     fetchUserRole();
@@ -231,8 +233,10 @@ export const WhatTheySell = ({
       return;
     }
 
-    if (!bulkTargetCategory) {
-      toast.error("Please select a target category");
+    const targetCategory = isCreatingNewCategory ? newBulkCategoryName.trim() : bulkTargetCategory;
+
+    if (!targetCategory) {
+      toast.error(isCreatingNewCategory ? "Please enter a category name" : "Please select a target category");
       return;
     }
 
@@ -244,11 +248,29 @@ export const WhatTheySell = ({
 
     const idsArray = Array.from(selectedInferenceIds);
 
+    // If creating new category, add it to catalog first
+    if (isCreatingNewCategory) {
+      const { error: catalogError } = await supabase
+        .from("product_category_catalog")
+        .insert({
+          category_name: targetCategory,
+          pob_name: "General", // Default POB for new categories
+          customer_id: customerId,
+          active: true
+        });
+
+      if (catalogError && !catalogError.message.includes('duplicate')) {
+        toast.error("Failed to create new category");
+        console.error(catalogError);
+        return;
+      }
+    }
+
     // Update all selected inferences
     const { error: updateError } = await supabase
       .from("prpc_inferences")
       .update({
-        inferred_product_category: bulkTargetCategory,
+        inferred_product_category: targetCategory,
         status: "user_adjusted",
         last_reviewed_by: user.id,
         last_reviewed_at: new Date().toISOString()
@@ -270,20 +292,23 @@ export const WhatTheySell = ({
           customer_id: customerId,
           entity_type: "prpc_inference",
           entity_id: id,
-          action: "bulk_category_override",
+          action: isCreatingNewCategory ? "create_and_assign_category" : "bulk_category_override",
           before_json: { inferred_product_category: currentInference?.inferred_product_category },
-          after_json: { inferred_product_category: bulkTargetCategory },
+          after_json: { inferred_product_category: targetCategory },
           actor: user.id
         });
     }
 
-    toast.success(`Updated ${idsArray.length} PRPCs to ${bulkTargetCategory}`);
+    toast.success(`Updated ${idsArray.length} PRPCs to ${targetCategory}${isCreatingNewCategory ? ' (new category)' : ''}`);
     
     // Clear selection and refresh
     setSelectedInferenceIds(new Set());
     setBulkTargetCategory("");
+    setIsCreatingNewCategory(false);
+    setNewBulkCategoryName("");
     fetchInferences();
     fetchCategoryStats();
+    fetchAvailableCategories();
   };
 
   const handleMergeCategory = async (fromCategory: string, toCategory: string) => {
@@ -852,29 +877,78 @@ export const WhatTheySell = ({
                   <span className="text-sm font-medium">
                     {selectedInferenceIds.size} selected
                   </span>
-                  <Select value={bulkTargetCategory} onValueChange={setBulkTargetCategory}>
-                    <SelectTrigger className="w-[200px] h-8">
-                      <SelectValue placeholder="Move to category..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background z-50">
-                      {availableCategories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  
+                  {!isCreatingNewCategory ? (
+                    <>
+                      <Select value={bulkTargetCategory} onValueChange={setBulkTargetCategory}>
+                        <SelectTrigger className="w-[200px] h-8">
+                          <SelectValue placeholder="Move to category..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background z-50">
+                          {availableCategories.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button 
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setIsCreatingNewCategory(true);
+                          setBulkTargetCategory("");
+                        }}
+                      >
+                        + New Category
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        value={newBulkCategoryName}
+                        onChange={(e) => setNewBulkCategoryName(e.target.value)}
+                        placeholder="Enter new category name..."
+                        className="w-[200px] h-8"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newBulkCategoryName.trim()) {
+                            handleBulkCategoryChange();
+                          } else if (e.key === 'Escape') {
+                            setIsCreatingNewCategory(false);
+                            setNewBulkCategoryName("");
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <Button 
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setIsCreatingNewCategory(false);
+                          setNewBulkCategoryName("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  )}
+                  
                   <Button 
                     size="sm" 
                     onClick={handleBulkCategoryChange}
-                    disabled={!bulkTargetCategory}
+                    disabled={isCreatingNewCategory ? !newBulkCategoryName.trim() : !bulkTargetCategory}
                   >
                     Apply
                   </Button>
                   <Button 
                     size="sm" 
                     variant="ghost"
-                    onClick={() => setSelectedInferenceIds(new Set())}
+                    onClick={() => {
+                      setSelectedInferenceIds(new Set());
+                      setIsCreatingNewCategory(false);
+                      setNewBulkCategoryName("");
+                      setBulkTargetCategory("");
+                    }}
                   >
                     Clear
                   </Button>
