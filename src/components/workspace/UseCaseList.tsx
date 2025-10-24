@@ -98,10 +98,6 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
     setLoading(false);
   };
 
-  const handleUploadClick = (useCase: UseCase) => {
-    setSelectedUseCase(useCase);
-    setUploadDialogOpen(true);
-  };
 
   const handleRowClick = async (useCase: UseCase) => {
     setSelectedUseCase(useCase);
@@ -197,8 +193,12 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
   return (
     <>
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Use Case List</CardTitle>
+          <Button onClick={() => setUploadDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Waterfall
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -211,7 +211,7 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
                   <TableHead>Description</TableHead>
                   <TableHead className="w-[100px]">Scenarios</TableHead>
                   <TableHead className="w-[120px]">Status</TableHead>
-                  <TableHead className="w-[200px]">Actions</TableHead>
+                  <TableHead className="w-[150px]">Waterfall</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -266,27 +266,21 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
                         )}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <div className="flex gap-2">
-                          {useCase.status === "uploaded" && useCase.waterfall_file_url ? (
+                        {useCase.status === "uploaded" && useCase.waterfall_file_url ? (
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-success" />
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
                               onClick={() => handleDownload(useCase)}
+                              className="h-8 px-2"
                             >
-                              <Download className="h-4 w-4 mr-1" />
-                              Download
+                              <Download className="h-4 w-4" />
                             </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleUploadClick(useCase)}
-                            >
-                              <Upload className="h-4 w-4 mr-1" />
-                              Upload
-                            </Button>
-                          )}
-                        </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
@@ -301,12 +295,32 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
       <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Upload Waterfall File</DialogTitle>
+            <DialogTitle>Upload Waterfall</DialogTitle>
             <DialogDescription>
-              Upload a waterfall document for {selectedUseCase?.use_case_name}
+              Select a use case and upload its waterfall document
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="use-case-select">Select Use Case</Label>
+              <select
+                id="use-case-select"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={selectedUseCase?.id || ""}
+                onChange={(e) => {
+                  const useCase = useCases.find(uc => uc.id === e.target.value);
+                  setSelectedUseCase(useCase || null);
+                }}
+                disabled={uploading}
+              >
+                <option value="">Choose a use case...</option>
+                {useCases.map((uc) => (
+                  <option key={uc.id} value={uc.id}>
+                    {uc.use_case_name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="waterfall-file">Waterfall File (PDF, Excel, etc.)</Label>
               <Input
@@ -315,21 +329,24 @@ export const UseCaseList = ({ customerId }: { customerId: string }) => {
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 accept=".pdf,.xlsx,.xls,.doc,.docx"
-                disabled={uploading}
+                disabled={uploading || !selectedUseCase}
               />
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setUploadDialogOpen(false)}
+              onClick={() => {
+                setUploadDialogOpen(false);
+                setSelectedUseCase(null);
+              }}
               disabled={uploading}
             >
               Cancel
             </Button>
             <Button
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
+              disabled={uploading || !selectedUseCase}
             >
               {uploading ? "Uploading..." : "Select File"}
             </Button>
