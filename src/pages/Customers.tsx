@@ -204,7 +204,7 @@ const Customers = () => {
               <SelectTrigger className="w-[240px]">
                 <SelectValue placeholder="Select user view" />
               </SelectTrigger>
-              <SelectContent className="bg-background z-50">
+              <SelectContent>
                 {users.map((user) => (
                   <SelectItem key={user.id} value={user.id}>
                     {user.full_name} - {user.role}
