@@ -56,11 +56,13 @@ export const WhatTheySell = ({
   const [userRole, setUserRole] = useState<string>("standard");
   const [viewMode, setViewMode] = useState<"overview" | "details">("overview");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   useEffect(() => {
     console.log("Component mounted, customer ID:", customerId);
     fetchUserRole();
     fetchInferences();
     fetchCategoryStats();
+    fetchAvailableCategories();
   }, [customerId]);
 
   // Refetch when category changes (including when going back to overview)
@@ -142,6 +144,76 @@ export const WhatTheySell = ({
     console.log("Processed stats:", stats);
     console.log("Categories found:", stats.map((s: any) => s.category));
     setCategoryStats(stats);
+  };
+
+  const fetchAvailableCategories = async () => {
+    const { data, error } = await supabase
+      .from("product_category_catalog")
+      .select("category_name")
+      .eq("active", true)
+      .order("category_name");
+    
+    if (error) {
+      console.error("Failed to fetch categories:", error);
+      return;
+    }
+    
+    const uniqueCategories = [...new Set(data?.map(c => c.category_name) || [])];
+    setAvailableCategories(uniqueCategories);
+  };
+
+  const handleCategoryOverride = async (inferenceId: string, newCategory: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("You must be logged in to update categories");
+      return;
+    }
+
+    // Find the current inference
+    const currentInference = inferences.find(inf => inf.id === inferenceId);
+    if (!currentInference) return;
+
+    const oldCategory = currentInference.inferred_product_category;
+
+    // Update the inference
+    const { error: updateError } = await supabase
+      .from("prpc_inferences")
+      .update({
+        inferred_product_category: newCategory,
+        status: "user_adjusted",
+        last_reviewed_by: user.id,
+        last_reviewed_at: new Date().toISOString()
+      })
+      .eq("id", inferenceId);
+
+    if (updateError) {
+      toast.error("Failed to update category");
+      console.error(updateError);
+      return;
+    }
+
+    // Log the change in audit trail
+    const { error: auditError } = await supabase
+      .from("audit_log")
+      .insert({
+        customer_id: customerId,
+        entity_type: "prpc_inference",
+        entity_id: inferenceId,
+        action: "category_override",
+        before_json: { inferred_product_category: oldCategory },
+        after_json: { inferred_product_category: newCategory },
+        actor: user.id
+      });
+
+    if (auditError) {
+      console.error("Failed to log audit entry:", auditError);
+    }
+
+    toast.success(`Category updated to ${newCategory}`);
+    
+    // Refresh data
+    fetchInferences();
+    fetchCategoryStats();
   };
   let filteredInferences = inferences.filter(inf => inf.product_name.toLowerCase().includes(search.toLowerCase()) || inf.rate_plan_name.toLowerCase().includes(search.toLowerCase()) || inf.charge_name.toLowerCase().includes(search.toLowerCase()) || inf.inferred_product_category?.toLowerCase().includes(search.toLowerCase()) || inf.inferred_pob?.toLowerCase().includes(search.toLowerCase()));
   console.log("Total inferences:", inferences.length);
@@ -371,12 +443,28 @@ export const WhatTheySell = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredInferences.map(inference => <TableRow key={inference.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedInference(inference)}>
-                    <TableCell className="font-medium">{inference.product_name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {inference.inferred_product_category || "N/A"}
-                      </Badge>
+                {filteredInferences.map(inference => <TableRow key={inference.id} className="hover:bg-muted/50">
+                    <TableCell className="font-medium cursor-pointer" onClick={() => setSelectedInference(inference)}>
+                      {inference.product_name}
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Select
+                        value={inference.inferred_product_category || ""}
+                        onValueChange={(value) => handleCategoryOverride(inference.id, value)}
+                      >
+                        <SelectTrigger className="w-[180px] h-8">
+                          <SelectValue placeholder="Select category">
+                            {inference.inferred_product_category || "N/A"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="bg-background z-50">
+                          {availableCategories.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs capitalize">
