@@ -58,6 +58,7 @@ export function AppSidebar() {
     { title: "What They Sell", tab: "what-they-sell", icon: Package },
     { title: "How They Sell", tab: "how-they-sell", icon: ShoppingCart },
     { title: "Use Cases", tab: "use-cases", icon: CheckSquare },
+    { title: "Finalize POB Configuration", tab: "finalize-pob", icon: FileText },
   ] : [];
 
   return (

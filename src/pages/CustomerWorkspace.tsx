@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { WhatTheySell } from "@/components/workspace/WhatTheySell";
 import { HowTheySell } from "@/components/workspace/HowTheySell";
 import { UseCaseList } from "@/components/workspace/UseCaseList";
+import { FinalizePOBConfiguration } from "@/components/workspace/FinalizePOBConfiguration";
 
 interface Customer {
   id: string;
@@ -31,6 +32,8 @@ const CustomerWorkspace = () => {
     ? "how-they-sell" 
     : tabParam === "use-cases" 
     ? "use-case-list"
+    : tabParam === "finalize-pob"
+    ? "finalize-pob"
     : tabParam === "coverage"
     ? "coverage"
     : tabParam === "audit"
@@ -117,6 +120,7 @@ const CustomerWorkspace = () => {
       {activeTab === "what-they-sell" && <WhatTheySell customerId={customer.id} />}
       {activeTab === "how-they-sell" && <HowTheySell customerId={customer.id} />}
       {activeTab === "use-case-list" && <UseCaseList customerId={customer.id} />}
+      {activeTab === "finalize-pob" && <FinalizePOBConfiguration customerId={customer.id} />}
       {activeTab === "coverage" && (
         <div className="text-center text-muted-foreground py-12">Coverage Set - Coming Soon</div>
       )}
