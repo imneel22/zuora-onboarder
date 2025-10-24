@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Eye, User } from "lucide-react";
+import { Search, Plus, Eye, User, UserPlus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -34,6 +35,8 @@ const Customers = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [selectedUserRole, setSelectedUserRole] = useState<string>("admin");
@@ -45,6 +48,7 @@ const Customers = () => {
     phase: "discovery",
     go_live_target_date: ""
   });
+  const [assignedUsers, setAssignedUsers] = useState<string[]>([]);
   const navigate = useNavigate();
   useEffect(() => {
     fetchUsers();
@@ -162,7 +166,8 @@ const Customers = () => {
       industry: formData.industry || null,
       status: formData.status,
       phase: formData.phase,
-      go_live_target_date: formData.go_live_target_date || null
+      go_live_target_date: formData.go_live_target_date || null,
+      assigned_user_ids: assignedUsers
     }]);
 
     if (error) {
@@ -179,8 +184,46 @@ const Customers = () => {
         phase: "discovery",
         go_live_target_date: ""
       });
+      setAssignedUsers([]);
       fetchCustomers();
     }
+  };
+
+  const handleEditCustomer = (customer: Customer, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingCustomer(customer);
+    setAssignedUsers(customer.assigned_user_ids || []);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingCustomer) return;
+
+    const { error } = await supabase
+      .from("customers")
+      .update({ assigned_user_ids: assignedUsers })
+      .eq("id", editingCustomer.id);
+
+    if (error) {
+      toast.error("Failed to update customer");
+      console.error(error);
+    } else {
+      toast.success("Customer updated successfully");
+      setEditDialogOpen(false);
+      setEditingCustomer(null);
+      setAssignedUsers([]);
+      fetchCustomers();
+    }
+  };
+
+  const toggleUserAssignment = (userId: string) => {
+    setAssignedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
   };
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center">
@@ -291,7 +334,58 @@ const Customers = () => {
                   onChange={(e) => setFormData({ ...formData, go_live_target_date: e.target.value })}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Assign Users</Label>
+                <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
+                  {users.map((user) => (
+                    <div key={user.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`assign-${user.id}`}
+                        checked={assignedUsers.includes(user.id)}
+                        onCheckedChange={() => toggleUserAssignment(user.id)}
+                      />
+                      <label
+                        htmlFor={`assign-${user.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {user.full_name} ({user.role})
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
               <Button type="submit" className="w-full">Create Customer</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Assign Users to {editingCustomer?.name}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleUpdateCustomer} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Assigned Users</Label>
+                <div className="border rounded-md p-3 space-y-2 max-h-64 overflow-y-auto">
+                  {users.map((user) => (
+                    <div key={user.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-assign-${user.id}`}
+                        checked={assignedUsers.includes(user.id)}
+                        onCheckedChange={() => toggleUserAssignment(user.id)}
+                      />
+                      <label
+                        htmlFor={`edit-assign-${user.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {user.full_name} ({user.role})
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <Button type="submit" className="w-full">Update Assignments</Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -311,6 +405,7 @@ const Customers = () => {
               <TableHead>Zuora Tenant ID</TableHead>
               <TableHead>Industry</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Assigned Users</TableHead>
               <TableHead>Target Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -334,15 +429,38 @@ const Customers = () => {
                   </Badge>
                 </TableCell>
                 <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {customer.assigned_user_ids && customer.assigned_user_ids.length > 0 ? (
+                      customer.assigned_user_ids.map(userId => {
+                        const user = users.find(u => u.id === userId);
+                        return user ? (
+                          <Badge key={userId} variant="secondary" className="text-xs">
+                            {user.full_name}
+                          </Badge>
+                        ) : null;
+                      })
+                    ) : (
+                      <span className="text-muted-foreground text-sm">Unassigned</span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
                   {customer.go_live_target_date ? new Date(customer.go_live_target_date).toLocaleDateString() : "-"}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" onClick={e => {
-                e.stopPropagation();
-                navigate(`/customer/${customer.id}`);
-              }}>
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center justify-end gap-2">
+                    {selectedUserRole === "admin" && (
+                      <Button variant="ghost" size="sm" onClick={(e) => handleEditCustomer(customer, e)}>
+                        <UserPlus className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={e => {
+                      e.stopPropagation();
+                      navigate(`/customer/${customer.id}`);
+                    }}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>)}
           </TableBody>
