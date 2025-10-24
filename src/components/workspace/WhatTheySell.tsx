@@ -644,18 +644,7 @@ export const WhatTheySell = ({
             viewMode={viewMode}
             currentFilter={filterBy}
           />
-          {viewMode === "overview" && (
-            <>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsRenameDialogOpen(true)}
-              >
-                Rename Category
-              </Button>
-              <CustomFieldConfig customerId={customerId} />
-            </>
-          )}
+          {viewMode === "overview" && <CustomFieldConfig customerId={customerId} />}
         </div>
       </div>
 
